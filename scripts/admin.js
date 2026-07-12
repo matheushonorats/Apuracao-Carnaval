@@ -48,6 +48,10 @@ class AdminPanel {
         try { this.setupSearchInput(); } catch (e) { console.error('setupSearchInput:', e); }
         try { this.setupChromaKeyHandler(); } catch (e) { console.error('setupChromaKeyHandler:', e); }
         try { this.setupRevelationControls(); } catch (e) { console.error('setupRevelationControls:', e); }
+        try { this.checkLocalStorageUsage(); } catch (e) { console.error('checkLocalStorageUsage:', e); }
+        try { this.setupPinAuthentication(); } catch (e) { console.error('setupPinAuthentication:', e); }
+        try { this.setupPinSettings(); } catch (e) { console.error('setupPinSettings:', e); }
+        try { this.startAutoBackup(); } catch (e) { console.error('startAutoBackup:', e); }
 
         console.log('✅ AdminPanel inicializado com sucesso');
     }
@@ -1401,6 +1405,7 @@ class AdminPanel {
             case 'settings':
                 this.renderStats();
                 this.renderTiebreakers();
+                this.renderBackupsHistory();
                 break;
             case 'all':
                 this.loadAllData();
@@ -1442,6 +1447,7 @@ class AdminPanel {
                 break;
             case 'settings':
                 this.renderStats();
+                this.renderBackupsHistory();
                 break;
         }
     }
@@ -1952,6 +1958,183 @@ class AdminPanel {
         });
         
         updateUI();
+    }
+
+    checkLocalStorageUsage() {
+        let totalBytes = 0;
+        for (const key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                totalBytes += (localStorage[key].length + key.length) * 2; // Estimativa UTF-16
+            }
+        }
+        
+        const limitBytes = 5 * 1024 * 1024; // 5MB limit comum
+        const pct = (totalBytes / limitBytes) * 100;
+        
+        console.log(`💾 Uso do localStorage: ${(totalBytes / 1024).toFixed(2)} KB (${pct.toFixed(1)}%)`);
+        
+        if (pct >= 90) {
+            this.showAlert(
+                `⚠️ Armazenamento local em ${pct.toFixed(0)}% do limite! Exporte o JSON ou ative o servidor local.`,
+                'warning'
+            );
+        }
+    }
+
+    setupPinAuthentication() {
+        const settings = this.storage.getSettings();
+        const overlay = document.getElementById('pinAuthOverlay');
+        const pinInput = document.getElementById('pinInput');
+        const submitBtn = document.getElementById('submitPinBtn');
+        const errMsg = document.getElementById('pinErrorMessage');
+        
+        if (!overlay || !pinInput || !submitBtn) return;
+        
+        // Se não tiver PIN configurado nas settings, garante ocultação e sai
+        if (!settings.adminPin) {
+            overlay.style.display = 'none';
+            return;
+        }
+        
+        // Ativar overlay de bloqueio
+        overlay.style.display = 'flex';
+        pinInput.focus();
+        
+        const tryAuthenticate = () => {
+            const enteredPin = pinInput.value.trim();
+            if (enteredPin === String(settings.adminPin)) {
+                overlay.classList.add('fade-out');
+                overlay.querySelector('.custom-modal').classList.add('scale-out');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    overlay.classList.remove('fade-out');
+                    overlay.querySelector('.custom-modal').classList.remove('scale-out');
+                }, 300);
+                this.showAlert('🔓 Acesso autorizado!', 'success');
+            } else {
+                if (errMsg) errMsg.style.display = 'block';
+                pinInput.value = '';
+                pinInput.focus();
+                
+                setTimeout(() => {
+                    if (errMsg) errMsg.style.display = 'none';
+                }, 3000);
+            }
+        };
+        
+        submitBtn.addEventListener('click', tryAuthenticate);
+        pinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') tryAuthenticate();
+        });
+    }
+
+    setupPinSettings() {
+        const input = document.getElementById('adminPinInput');
+        const saveBtn = document.getElementById('savePinBtn');
+        if (!input || !saveBtn) return;
+        
+        // Carregar valor atual
+        const settings = this.storage.getSettings();
+        input.value = settings.adminPin || '';
+        
+        saveBtn.addEventListener('click', () => {
+            const value = input.value.trim();
+            if (value !== '' && (!/^\d{4}$/.test(value))) {
+                this.showAlert('❌ O PIN deve conter exatamente 4 números!', 'error');
+                return;
+            }
+            
+            this.storage.updateSettings({ adminPin: value || null });
+            this.showAlert(
+                value ? '🔒 PIN de segurança administrativa configurado!' : '🔓 Proteção por PIN removida!',
+                'success'
+            );
+        });
+    }
+
+    startAutoBackup() {
+        // Executar primeiro backup automático silencioso logo após carregar (delay 30s)
+        setTimeout(() => {
+            try { this.generateAutoBackup(true); } catch (e) {}
+        }, 30000);
+
+        // Backup recorrente a cada 3 minutos (180000ms)
+        setInterval(() => {
+            try {
+                this.generateAutoBackup(false);
+            } catch (err) {
+                console.error('[Backup] Erro no backup recorrente:', err);
+            }
+        }, 180000);
+    }
+    
+    generateAutoBackup(silent = false) {
+        const currentData = this.storage.getData();
+        if (!currentData) return;
+        
+        const backupData = {
+            timestamp: Date.now(),
+            data: currentData
+        };
+        
+        const b1 = localStorage.getItem('samba-backup-1');
+        const b2 = localStorage.getItem('samba-backup-2');
+        
+        if (b2) localStorage.setItem('samba-backup-3', b2);
+        if (b1) localStorage.setItem('samba-backup-2', b1);
+        
+        localStorage.setItem('samba-backup-1', JSON.stringify(backupData));
+        
+        console.log('💾 Backup automático local gerado com sucesso.');
+        if (!silent) {
+            this.showAlert('💾 Backup automático salvo com sucesso.', 'info');
+        }
+        
+        if (this.currentTab === 'settings') {
+            this.renderBackupsHistory();
+        }
+    }
+
+    renderBackupsHistory() {
+        const container = document.getElementById('backupsHistoryList');
+        if (!container) return;
+        
+        const b1 = localStorage.getItem('samba-backup-1');
+        const b2 = localStorage.getItem('samba-backup-2');
+        const b3 = localStorage.getItem('samba-backup-3');
+        
+        const backups = [b1, b2, b3].map(b => b ? JSON.parse(b) : null).filter(Boolean);
+        
+        if (backups.length === 0) {
+            container.innerHTML = '<p class="text-xs text-muted">Aguardando geração do primeiro backup automático...</p>';
+            return;
+        }
+        
+        window.restoreBackupIndex = (index) => {
+            const backup = backups[index];
+            if (!backup) return;
+            
+            this.showConfirm(
+                '🔄 Restaurar Backup',
+                `Deseja realmente restaurar os dados salvos em ${new Date(backup.timestamp).toLocaleString('pt-BR')}?\n\nOs dados atuais do painel serão substituídos.`
+            ).then(confirmed => {
+                if (confirmed) {
+                    this.storage.saveData(backup.data);
+                    this.showAlert('✅ Dados restaurados com sucesso!', 'success');
+                    this.loadAllData();
+                }
+            });
+        };
+        
+        container.innerHTML = backups.map((b, idx) => `
+            <div class="flex items-center justify-between p-sm bg-dark rounded-md" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); padding: 0.5rem 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05);">
+                <div>
+                    <div class="font-medium text-sm">Backup #${idx + 1}</div>
+                    <div class="text-xs text-muted">${new Date(b.timestamp).toLocaleString('pt-BR')}</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="restoreBackupIndex(${idx})" style="padding: 0.25rem 0.5rem; font-size: var(--font-size-xs);">Restaurar</button>
+            </div>
+        `).join('');
     }
 } // Fim da classe AdminPanel
 

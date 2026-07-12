@@ -355,6 +355,30 @@
                     </button>
                 </div>
 
+                <!-- Proteção de Acesso (Fase 4) -->
+                <div class="card mt-lg">
+                    <h3>Proteção de Acesso</h3>
+                    <div class="divider"></div>
+                    <p class="text-sm text-muted mb-md">Defina um PIN de 4 dígitos para bloquear o painel administrativo contra acessos não autorizados quando compartilhado na rede local.</p>
+                    <div class="form-row" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                            <label class="label" for="adminPinInput">PIN de Acesso (4 números)</label>
+                            <input type="password" id="adminPinInput" class="input text-center" maxlength="4" placeholder="Deixe em branco para desativar" style="font-size: 1.2rem; letter-spacing: 0.2rem;">
+                        </div>
+                        <button id="savePinBtn" class="btn btn-primary">Salvar PIN</button>
+                    </div>
+                </div>
+
+                <!-- Backups Automáticos Históricos (Fase 4) -->
+                <div class="card mt-lg">
+                    <h3>Backups Automáticos</h3>
+                    <div class="divider"></div>
+                    <p class="text-sm text-muted mb-md">O sistema realiza backups automáticos locais a cada 3 minutos. Você pode restaurar qualquer uma das últimas 3 versões salvas abaixo:</p>
+                    <div id="backupsHistoryList" class="flex flex-col gap-sm" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- Gerado dinamicamente no admin.js -->
+                    </div>
+                </div>
+
                 <div class="card mt-lg">
                     <h3>Critérios de Desempate</h3>
                     <div class="divider"></div>
@@ -396,6 +420,26 @@
 
     <!-- Alert Container para Toast Messages -->
     <div id="alertContainer"></div>
+
+    <!-- Overlay de Autenticação por PIN (Fase 4) -->
+    <div id="pinAuthOverlay" class="custom-modal-backdrop" style="display: none; background: rgba(10, 14, 39, 0.98); z-index: 9999;">
+        <div class="custom-modal scale-in" style="max-width: 350px; text-align: center;">
+            <div class="custom-modal-header" style="border: none; margin-bottom: 1.5rem;">
+                <img src="assets/icone.png" alt="SSAMBA" style="max-width: 80px; margin-bottom: 0.5rem;">
+                <h3 style="font-size: 1.3rem;">SSAMBA — Painel Admin</h3>
+                <p class="text-xs text-muted mt-xs" style="margin-top: 0.25rem;">Acesso restrito. Digite o PIN de 4 dígitos para continuar.</p>
+            </div>
+            <div class="custom-modal-body">
+                <input type="password" id="pinInput" class="input text-center font-bold" 
+                       style="font-size: 2rem; letter-spacing: 1rem; text-align: center; border-color: var(--color-primary);" 
+                       maxlength="4" placeholder="••••" autocomplete="off">
+                <div id="pinErrorMessage" class="text-xs text-error mt-sm" style="display: none; margin-top: 0.5rem; color: var(--color-error);">PIN incorreto. Tente novamente.</div>
+            </div>
+            <div class="custom-modal-footer" style="justify-content: center;">
+                <button id="submitPinBtn" class="btn btn-primary w-full">Entrar no Painel</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="scripts/storage.js"></script>

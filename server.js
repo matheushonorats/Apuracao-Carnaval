@@ -6,6 +6,9 @@ const os = require('os');
 const PORT = 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// Clientes SSE (Server-Sent Events) ativos
+const sseClients = new Set();
+
 const mimeTypes = {
     '.html': 'text/html',
     '.js': 'text/javascript',
@@ -152,6 +155,31 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // SSE: Conexão de Eventos em tempo real
+    if (req.url === '/api/events' && req.method === 'GET') {
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*'
+        });
+        
+        sseClients.add(res);
+        console.log(`📡 Novo cliente SSE conectado. Clientes ativos: ${sseClients.size}`);
+        
+        // Ping de keep-alive a cada 20 segundos
+        const pingInterval = setInterval(() => {
+            res.write(': keepalive\n\n');
+        }, 20000);
+
+        req.on('close', () => {
+            clearInterval(pingInterval);
+            sseClients.delete(res);
+            console.log(`📡 Cliente SSE desconectado. Clientes ativos: ${sseClients.size}`);
+        });
+        return;
+    }
+
     // API: Get Data (FROM MEMORY)
     if (req.url === '/api/data' && req.method === 'GET') {
         if (cachedData) {
@@ -221,6 +249,18 @@ const server = http.createServer((req, res) => {
                         console.log(`✅ [DISK] Data saved successfully (${Date.now() - startTime}ms total)`);
                     }
                 });
+
+                // Notificar todos os clientes SSE conectados sobre a atualização
+                if (sseClients.size > 0) {
+                    console.log(`📣 Notificando ${sseClients.size} cliente(s) conectados via SSE...`);
+                    sseClients.forEach(client => {
+                        try {
+                            client.write('data: update\n\n');
+                        } catch (err) {
+                            sseClients.delete(client);
+                        }
+                    });
+                }
 
                 // Return optimized data if changed, so client can update local references
                 if (optimized) {

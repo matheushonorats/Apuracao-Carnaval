@@ -55,8 +55,8 @@ class StorageManager {
                         }
                     }
 
-                    // Iniciar polling local
-                    this.startPolling();
+                    // Iniciar conexão reativa em tempo real via SSE (Server-Sent Events)
+                    this.startSSESync();
                 } else {
                     this.initializeData();
                 }
@@ -159,6 +159,54 @@ class StorageManager {
                 // Silencioso em caso de erro de rede momentâneo
             }
         }, 300); // Poll a cada 300ms (Mais rápido)
+    }
+
+    startSSESync() {
+        if (typeof EventSource === 'undefined') {
+            console.log('⚠️ EventSource não suportado. Usando polling tradicional de backup.');
+            this.startPolling();
+            return;
+        }
+
+        console.log('📡 Conectando ao canal de eventos em tempo real (SSE) do servidor...');
+        
+        // Fechar conexão anterior se existir
+        if (this.eventSource) {
+            try { this.eventSource.close(); } catch (e) {}
+        }
+
+        this.eventSource = new EventSource('/api/events');
+
+        this.eventSource.onmessage = async (event) => {
+            if (this.isSaving) return; // Evitar conflito se estiver salvando localmente
+            
+            try {
+                const response = await fetch(this.serverUrl);
+                if (response.ok) {
+                    const serverText = await response.text();
+
+                    if (serverText !== this.lastServerHash) {
+                        this.lastServerHash = serverText;
+                        const serverData = JSON.parse(serverText);
+                        const localData = this.getData();
+                        const serverTime = serverData.lastUpdated || 0;
+                        const localTime = localData ? (localData.lastUpdated || 0) : 0;
+
+                        if (serverTime > localTime) {
+                            console.log(`🔄 [SSE] Nova atualização recebida! (S:${serverTime} > L:${localTime})`);
+                            localStorage.setItem(this.STORAGE_KEY, serverText);
+                            this.notifyChange('all');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[SSE] Erro ao processar atualização remota:', err);
+            }
+        };
+
+        this.eventSource.onerror = (err) => {
+            console.warn('⚠️ [SSE] Conexão com o servidor perdida. O navegador tentará reconectar de forma automática.');
+        };
     }
 
     syncToServer(data) {
