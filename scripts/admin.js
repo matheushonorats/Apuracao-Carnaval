@@ -7,7 +7,9 @@ class AdminPanel {
     constructor() {
         this.storage = new StorageManager();
         this.currentTab = 'schools';
-        this.editingId = null;
+        this.editingSchoolId = null;
+        this.editingJudgeId = null;
+        this.editingCategoryId = null;
 
         // Bind event listeners
         this.init();
@@ -191,6 +193,41 @@ class AdminPanel {
 
         this.currentTab = tabName;
 
+        // Resetar os estados dos formulários e IDs de edição ao mudar de aba
+        this.editingSchoolId = null;
+        this.editingJudgeId = null;
+        this.editingCategoryId = null;
+
+        const schoolForm = document.getElementById('schoolForm');
+        if (schoolForm) {
+            schoolForm.reset();
+            const submitBtn = schoolForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Adicionar Agremiação';
+                submitBtn.classList.remove('btn-success');
+            }
+        }
+
+        const judgeForm = document.getElementById('judgeForm');
+        if (judgeForm) {
+            judgeForm.reset();
+            const submitBtn = judgeForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Adicionar Jurado';
+                submitBtn.classList.remove('btn-success');
+            }
+        }
+
+        const categoryForm = document.getElementById('categoryForm');
+        if (categoryForm) {
+            categoryForm.reset();
+            const submitBtn = categoryForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.textContent = 'Adicionar Quesito';
+                submitBtn.classList.remove('btn-success');
+            }
+        }
+
         // Recarregar dados da aba
         this.loadTabData(tabName);
     }
@@ -269,7 +306,7 @@ class AdminPanel {
             const schools = this.storage.getSchools();
             const isDuplicate = schools.some(s =>
                 s.name.toLowerCase() === name.toLowerCase() &&
-                s.id !== this.editingId
+                s.id !== this.editingSchoolId
             );
 
             if (isDuplicate) {
@@ -293,12 +330,12 @@ class AdminPanel {
             this.setButtonLoading(submitBtn, true);
 
             // Salvar
-            if (this.editingId) {
+            if (this.editingSchoolId) {
                 const updates = { name, penalty: penalty ? parseFloat(penalty) : 0 };
                 if (logoDataURL) updates.logoDataURL = logoDataURL;
-                this.storage.updateSchool(this.editingId, updates);
+                this.storage.updateSchool(this.editingSchoolId, updates);
                 this.showAlert('✅ Agremiação atualizada com sucesso!', 'success');
-                this.editingId = null;
+                this.editingSchoolId = null;
             } else {
                 const newSchool = this.storage.addSchool(name, logoDataURL);
                 if (penalty) {
@@ -311,7 +348,7 @@ class AdminPanel {
             form.reset();
             submitBtn.textContent = 'Adicionar Agremiação';
             submitBtn.classList.remove('btn-success');
-            this.editingId = null;
+            this.editingSchoolId = null;
             this.updateFileLabel('schoolLogo', 'Escolher logo...');
 
         } catch (error) {
@@ -384,7 +421,7 @@ class AdminPanel {
         form.schoolName.value = school.name;
         form.schoolPenalty.value = school.penalty || '';
 
-        this.editingId = id;
+        this.editingSchoolId = id;
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.textContent = '💾 Atualizar Agremiação';
         submitBtn.classList.add('btn-success');
@@ -441,7 +478,7 @@ class AdminPanel {
             const judges = this.storage.getJudges();
             const isDuplicate = judges.some(j =>
                 j.name.toLowerCase() === name.toLowerCase() &&
-                j.id !== this.editingId
+                j.id !== this.editingJudgeId
             );
 
             if (isDuplicate) {
@@ -451,10 +488,10 @@ class AdminPanel {
 
             this.setButtonLoading(submitBtn, true);
 
-            if (this.editingId) {
-                this.storage.updateJudge(this.editingId, { name, categoryIds });
+            if (this.editingJudgeId) {
+                this.storage.updateJudge(this.editingJudgeId, { name, categoryIds });
                 this.showAlert('✅ Jurado atualizado com sucesso!', 'success');
-                this.editingId = null;
+                this.editingJudgeId = null;
             } else {
                 this.storage.addJudge(name, categoryIds);
                 this.showAlert('✅ Jurado adicionado com sucesso!', 'success');
@@ -532,7 +569,7 @@ class AdminPanel {
             cb.checked = judge.categoryIds && judge.categoryIds.includes(cb.value);
         });
 
-        this.editingId = id;
+        this.editingJudgeId = id;
         form.querySelector('button[type="submit"]').textContent = 'Atualizar Jurado';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -608,7 +645,7 @@ class AdminPanel {
             const categories = this.storage.getCategories();
             const isDuplicate = categories.some(c =>
                 c.name.toLowerCase() === name.toLowerCase() &&
-                c.id !== this.editingId
+                c.id !== this.editingCategoryId
             );
 
             if (isDuplicate) {
@@ -618,10 +655,10 @@ class AdminPanel {
 
             this.setButtonLoading(submitBtn, true);
 
-            if (this.editingId) {
-                this.storage.updateCategory(this.editingId, { name, order });
+            if (this.editingCategoryId) {
+                this.storage.updateCategory(this.editingCategoryId, { name, order });
                 this.showAlert('✅ Quesito atualizado com sucesso!', 'success');
-                this.editingId = null;
+                this.editingCategoryId = null;
             } else {
                 this.storage.addCategory(name, order);
                 this.showAlert('✅ Quesito adicionado com sucesso!', 'success');
@@ -694,7 +731,7 @@ class AdminPanel {
         form.categoryName.value = category.name;
         form.categoryOrder.value = category.order;
 
-        this.editingId = id;
+        this.editingCategoryId = id;
         form.querySelector('button[type="submit"]').textContent = 'Atualizar Quesito';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -735,13 +772,7 @@ class AdminPanel {
         }
 
         // ATUALIZAÇÃO SOLICITADA: Sincronizar display com o quesito sendo lançado
-        localStorage.setItem('currentDisplayCategory', categoryId);
-
-        // Se estivermos na view de apuração, garantir que ela esteja ativa
-        const currentView = localStorage.getItem('currentView');
-        if (currentView === 'category') {
-            this.storage.notifyListeners('display_control');
-        }
+        this.storage.updateDisplayControl({ currentCategoryId: categoryId });
 
         // Atualizar também o select da aba de controle (visual apenas)
         const displaySelect = document.getElementById('displayCategorySelect');
@@ -1002,7 +1033,6 @@ class AdminPanel {
                 const scoreSelect = document.getElementById('scoreCategorySelect');
                 if (scoreSelect && scoreSelect.value) {
                     updates.currentCategoryId = scoreSelect.value;
-                    localStorage.setItem('currentDisplayCategory', scoreSelect.value);
                 }
             }
             this.storage.updateDisplayControl(updates);
@@ -1032,12 +1062,11 @@ class AdminPanel {
 
         if (displayCategorySelect) {
             displayCategorySelect.addEventListener('change', (e) => {
-                localStorage.setItem('currentDisplayCategory', e.target.value);
+                this.storage.updateDisplayControl({ currentCategoryId: e.target.value });
                 // Sincronizar score tab se necessário
                 if (scoreCategorySelect && scoreCategorySelect.value !== e.target.value) {
                     // scoreCategorySelect.value = e.target.value; // Opcional
                 }
-                this.storage.notifyChange('display_control');
             });
         }
 

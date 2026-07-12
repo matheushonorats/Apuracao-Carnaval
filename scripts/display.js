@@ -24,11 +24,12 @@ class DisplayController {
         this.render();
         const settings = this.storage.getSettings();
         this.applySettings(settings);
+        this.startUpdateLoop(); // Inicia o loop de backup uma única vez
     }
 
     startUpdateLoop() {
         if (this.updateInterval) clearInterval(this.updateInterval);
-        this.updateInterval = setInterval(() => this.render(), 200); // Real-time poll (was 1000ms)
+        this.updateInterval = setInterval(() => this.render(), 3000); // Polling de backup mais leve (3s)
     }
 
     handleUpdate(dataType) {
@@ -51,8 +52,7 @@ class DisplayController {
     }
 
     render(animateView = false) {
-        // Reiniciar intervalo para evitar corte de animação (race condition)
-        this.startUpdateLoop();
+        // Renderizador central reativo
 
         const control = this.storage.getDisplayControl();
         const newView = control.view || 'category';
@@ -552,15 +552,7 @@ class DisplayController {
         return div.innerHTML;
     }
 
-    handleUpdate(dataType) {
-        // Recarregar visualização quando dados mudam
-        this.render();
-
-        if (dataType === 'settings') {
-            const settings = this.storage.getSettings();
-            this.applySettings(settings);
-        }
-    }
+    // Removido handleUpdate duplicado que sobrescrevia a lógica correta
 
     applySettings(settings) {
         // Atualizar fundo usando método centralizado
