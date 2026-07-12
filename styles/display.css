@@ -659,3 +659,22 @@ body {
         gap: var(--space-md);
     }
 }
+
+/* ===== CHROMA KEY / OBS STUDIO (Fase 3) ===== */
+body.chroma-key {
+    background: #00ff00 !important;
+    background-image: none !important;
+}
+
+body.chroma-key .display-header,
+body.chroma-key .view-title {
+    text-shadow: none !important;
+}
+
+body.chroma-key .scores-table {
+    background: rgba(26, 15, 58, 0.95) !important; /* Aumenta contraste sobre croma */
+}
+
+body.chroma-key .ranking-item {
+    background: linear-gradient(90deg, rgba(26, 15, 58, 0.95) 0%, rgba(42, 47, 74, 0.9) 100%) !important;
+}

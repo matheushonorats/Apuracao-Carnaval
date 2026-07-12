@@ -46,6 +46,8 @@ class AdminPanel {
 
         try { this.setupDashboardControls(); } catch (e) { console.error('setupDashboardControls:', e); }
         try { this.setupSearchInput(); } catch (e) { console.error('setupSearchInput:', e); }
+        try { this.setupChromaKeyHandler(); } catch (e) { console.error('setupChromaKeyHandler:', e); }
+        try { this.setupRevelationControls(); } catch (e) { console.error('setupRevelationControls:', e); }
 
         console.log('✅ AdminPanel inicializado com sucesso');
     }
@@ -1822,6 +1824,135 @@ class AdminPanel {
         }
     }
 
+    setupChromaKeyHandler() {
+        const chromaInput = document.getElementById('chromaKeyInput');
+        if (!chromaInput) return;
+        
+        // Carregar valor atual
+        const control = this.storage.getDisplayControl();
+        chromaInput.checked = !!control.chromaKey;
+        
+        chromaInput.addEventListener('change', (e) => {
+            this.storage.updateDisplayControl({ chromaKey: e.target.checked });
+            this.showAlert(
+                e.target.checked ? '💚 Modo Chroma Key ativado no telão!' : '❌ Modo Chroma Key desativado no telão!',
+                'info'
+            );
+        });
+    }
+
+    setupRevelationControls() {
+        const toggleBtn = document.getElementById('toggleRevelationBtn');
+        const prevBtn = document.getElementById('revealPrevBtn');
+        const nextBtn = document.getElementById('revealNextBtn');
+        const allBtn = document.getElementById('revealAllBtn');
+        const wrapper = document.getElementById('revelationControlsWrapper');
+        const actionButtons = document.getElementById('revelationActionButtons');
+        const statusText = document.getElementById('revelationStatusText');
+        const select = document.getElementById('scoreCategorySelect');
+        
+        if (!toggleBtn || !wrapper || !select) return;
+        
+        // Função para atualizar visibilidade dos botões
+        const updateUI = () => {
+            const control = this.storage.getDisplayControl();
+            const categoryId = select.value;
+            const schools = this.storage.getSchools();
+            const judges = this.storage.getJudges().filter(j => 
+                !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(categoryId)
+            );
+            
+            const totalNotes = schools.length * judges.length;
+            
+            if (!categoryId || schools.length === 0 || judges.length === 0) {
+                wrapper.style.display = 'none';
+                return;
+            }
+            
+            wrapper.style.display = 'block';
+            
+            if (control.revelationActive) {
+                toggleBtn.textContent = '⏹️ Parar Modo Revelação';
+                toggleBtn.className = 'btn btn-danger';
+                actionButtons.style.display = 'flex';
+                statusText.textContent = `Revelado: ${control.revealedNotesCount || 0}/${totalNotes} notas`;
+                statusText.className = 'badge badge-success';
+            } else {
+                toggleBtn.textContent = '🎬 Iniciar Modo Revelação';
+                toggleBtn.className = 'btn btn-secondary';
+                actionButtons.style.display = 'none';
+                statusText.textContent = 'Modo Revelação: Desativado';
+                statusText.className = 'badge badge-primary';
+            }
+        };
+        
+        // Escutar seletores e mudanças
+        select.addEventListener('change', updateUI);
+        this.storage.addListener(updateUI);
+        
+        toggleBtn.addEventListener('click', () => {
+            const control = this.storage.getDisplayControl();
+            const categoryId = select.value;
+            
+            if (control.revelationActive) {
+                // Parar revelação
+                this.storage.updateDisplayControl({
+                    revelationActive: false,
+                    revealedNotesCount: 0
+                });
+            } else {
+                // Iniciar revelação
+                this.storage.updateDisplayControl({
+                    revelationActive: true,
+                    revealedNotesCount: 0,
+                    view: 'category',
+                    currentCategoryId: categoryId
+                });
+                // Garante que o telão vá para a tela de quesito se estiver em ranking
+                window.changeView('category');
+            }
+        });
+        
+        nextBtn.addEventListener('click', () => {
+            const control = this.storage.getDisplayControl();
+            const categoryId = select.value;
+            const schools = this.storage.getSchools();
+            const judges = this.storage.getJudges().filter(j => 
+                !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(categoryId)
+            );
+            const totalNotes = schools.length * judges.length;
+            
+            if ((control.revealedNotesCount || 0) < totalNotes) {
+                this.storage.updateDisplayControl({
+                    revealedNotesCount: (control.revealedNotesCount || 0) + 1
+                });
+            }
+        });
+        
+        prevBtn.addEventListener('click', () => {
+            const control = this.storage.getDisplayControl();
+            if ((control.revealedNotesCount || 0) > 0) {
+                this.storage.updateDisplayControl({
+                    revealedNotesCount: (control.revealedNotesCount || 0) - 1
+                });
+            }
+        });
+        
+        allBtn.addEventListener('click', () => {
+            const categoryId = select.value;
+            const schools = this.storage.getSchools();
+            const judges = this.storage.getJudges().filter(j => 
+                !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(categoryId)
+            );
+            const totalNotes = schools.length * judges.length;
+            
+            this.storage.updateDisplayControl({
+                revealedNotesCount: totalNotes
+            });
+        });
+        
+        updateUI();
+    }
 } // Fim da classe AdminPanel
 
 // Inicializar quando o DOM estiver pronto

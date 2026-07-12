@@ -25,6 +25,7 @@ class DisplayController {
         const settings = this.storage.getSettings();
         this.applySettings(settings);
         this.startUpdateLoop(); // Inicia o loop de backup uma única vez
+        this.setupClock(); // Inicia o relógio em tempo real
     }
 
     startUpdateLoop() {
@@ -80,6 +81,13 @@ class DisplayController {
         });
 
         const dataChanged = this.lastDataHash !== currentDataState;
+
+        // Aplicar classe Chroma Key com base no displayControl
+        if (control.chromaKey) {
+            document.body.classList.add('chroma-key');
+        } else {
+            document.body.classList.remove('chroma-key');
+        }
 
         // Se nada visual mudou, abortar (Isso para o flicker de imagens)
         if (!viewChanged && !categoryChanged && !dataChanged && !animateView && !this.isFirstRender) {
@@ -275,10 +283,30 @@ class DisplayController {
                         </tr>
                     </thead>
                     <tbody>
-                        ${schools.map(school => {
+                        ${schools.map((school, sIndex) => {
             const scores = this.storage.getScoresByCategory(category.id).filter(s => s.schoolId === school.id);
-            const total = this.storage.getSchoolCategoryTotal(school.id, category.id);
-            const grandTotal = this.storage.getSchoolTotal(school.id);
+            
+            // Calcular totais parciais/gerais em tempo real baseando nas notas já reveladas
+            let revealedScoresSum = 0;
+            judges.forEach((judge, jIndex) => {
+                const isRevealed = !control.revelationActive || ((jIndex * schools.length + sIndex) < (control.revealedNotesCount || 0));
+                if (isRevealed) {
+                    const score = scores.find(s => s.judgeId === judge.id);
+                    if (score) {
+                        revealedScoresSum += score.score;
+                    }
+                }
+            });
+
+            const total = revealedScoresSum;
+            
+            const allScores = this.storage.getScoresBySchool(school.id);
+            const otherScoresSum = allScores
+                .filter(s => s.categoryId !== category.id)
+                .reduce((sum, s) => sum + s.score, 0);
+                
+            const penalty = school.penalty ? parseFloat(school.penalty) : 0;
+            const grandTotal = otherScoresSum + total - penalty;
 
             // Animação de Totais
             const totalKey = `total_${school.id}_${category.id}`;
@@ -313,8 +341,11 @@ class DisplayController {
                                              onerror="this.src='assets/default-logo.svg'">
                                         <span>${this.escapeHtml(school.name)}</span>
                                     </td>
-                                    ${judges.map(judge => {
+                                    ${judges.map((judge, jIndex) => {
                 const score = scores.find(s => s.judgeId === judge.id);
+                
+                // Verificar se a nota está oculta pelo Modo Revelação sequencial (coluna por coluna)
+                const isRevealed = !control.revelationActive || ((jIndex * schools.length + sIndex) < (control.revealedNotesCount || 0));
 
                 // Lógica de Animação de Nota
                 const scoreKey = `${school.id}_${judge.id}_${category.id}`;
@@ -322,7 +353,7 @@ class DisplayController {
                 const prevVal = this.previousScores.get(scoreKey);
 
                 let animClass = '';
-                if (currentVal !== prevVal) {
+                if (isRevealed && currentVal !== prevVal) {
                     if (currentVal !== null && prevVal !== undefined) {
                         animClass = 'number-update';
                     }
@@ -330,6 +361,10 @@ class DisplayController {
                 }
                 if (prevVal === undefined && currentVal !== null) {
                     this.previousScores.set(scoreKey, currentVal);
+                }
+
+                if (!isRevealed) {
+                    return `<td class="score-cell" style="opacity: 0.2; color: var(--color-text-dim);">?</td>`;
                 }
 
                 return `<td class="score-cell ${animClass}">${score ? score.score.toFixed(2) : '-'}</td>`;
@@ -360,10 +395,11 @@ class DisplayController {
 
         let shouldFlashLeader = false;
 
-        judges.forEach(judge => {
-            // Verificar se este juiz deu nota para TODAS as escolas nesta categoria
-            const scoresForJudge = this.storage.getScoresByCategory(category.id).filter(s => s.judgeId === judge.id && s.score !== null && s.score !== undefined);
-            const isJudgeComplete = scoresForJudge.length === schools.length;
+        judges.forEach((judge, jIndex) => {
+            // Verificar se este juiz deu nota para TODAS as escolas nesta categoria (ou se foi revelada se em Modo Revelação)
+            const isJudgeComplete = !control.revelationActive 
+                ? (this.storage.getScoresByCategory(category.id).filter(s => s.judgeId === judge.id && s.score !== null && s.score !== undefined).length === schools.length)
+                : (control.revealedNotesCount >= (jIndex + 1) * schools.length);
 
             const judgeKey = `${category.id}_${judge.id}`;
 
@@ -544,6 +580,11 @@ class DisplayController {
         }).join('');
 
         document.getElementById('rankingGrid').innerHTML = html;
+
+        // Disparar confetes se for troca de tela/animação inicial do ranking
+        if (animateView && !this.isFirstRender) {
+            this.launchConfetti();
+        }
     }
 
     escapeHtml(text) {
@@ -560,6 +601,85 @@ class DisplayController {
 
         // Atualizar logos do header (garantir que atualize quando settings mudar)
         this.updateHeaderLogos();
+
+        // Sincronizar Chroma Key (Modo TV/OBS)
+        const control = this.storage.getDisplayControl();
+        if (control.chromaKey) {
+            document.body.classList.add('chroma-key');
+        } else {
+            document.body.classList.remove('chroma-key');
+        }
+    }
+
+    setupClock() {
+        const clockEl = document.getElementById('displayClock');
+        if (clockEl) {
+            const updateClock = () => {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString('pt-BR');
+            };
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+    }
+
+    launchConfetti() {
+        const duration = 4000;
+        const end = Date.now() + duration;
+        
+        let container = document.getElementById('confetti-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'confetti-container';
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100vw';
+            container.style.height = '100vh';
+            container.style.pointerEvents = 'none';
+            container.style.zIndex = '999';
+            container.style.overflow = 'hidden';
+            document.body.appendChild(container);
+        }
+        
+        const colors = ['#FFD700', '#FF6B00', '#E91E63', '#00FF00', '#00FFFF', '#FF00FF'];
+        
+        const frame = () => {
+            if (Date.now() > end) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            for (let i = 0; i < 4; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'absolute';
+                confetti.style.width = `${Math.random() * 8 + 5}px`;
+                confetti.style.height = `${Math.random() * 8 + 5}px`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${Math.random() * 100}vw`;
+                confetti.style.top = '-10px';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                confetti.style.opacity = Math.random();
+                
+                const animDuration = Math.random() * 2 + 1.5;
+                confetti.style.transition = `transform ${animDuration}s linear, opacity ${animDuration}s linear`;
+                container.appendChild(confetti);
+                
+                void confetti.offsetWidth;
+                const targetY = window.innerHeight + 20;
+                const targetXOffset = (Math.random() * 160 - 80);
+                const targetRotate = Math.random() * 360 * 3;
+                
+                confetti.style.transform = `translate(${targetXOffset}px, ${targetY}px) rotate(${targetRotate}deg)`;
+                confetti.style.opacity = '0';
+                
+                setTimeout(() => confetti.remove(), animDuration * 1000);
+            }
+            
+            requestAnimationFrame(frame);
+        };
+        
+        frame();
     }
 }
 

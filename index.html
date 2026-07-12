@@ -269,6 +269,23 @@
                 <div id="scoresGridContainer" class="mt-lg"></div>
 
                 <button id="saveScoresBtn" class="btn btn-success mt-lg">Salvar Notas</button>
+
+                <!-- Controle de Revelação Sequencial (Fase 3) -->
+                <div id="revelationControlsWrapper" class="card mt-lg" style="display: none; border: 1px dashed var(--color-primary);">
+                    <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🎬</span> Controle do Modo Revelação (Suspense)
+                    </h3>
+                    <p class="text-xs text-muted mb-md" style="margin-bottom: 1rem;">O Modo Revelação permite exibir as notas dos jurados no telão uma a uma, sequencialmente por quesito (coluna por coluna), para criar clima de suspense para o público.</p>
+                    <div class="flex items-center gap-md flex-wrap" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <button id="toggleRevelationBtn" class="btn btn-secondary">🎬 Iniciar Modo Revelação</button>
+                        <div id="revelationActionButtons" class="flex items-center gap-sm" style="display: none; gap: 0.5rem;">
+                            <button id="revealPrevBtn" class="btn btn-secondary">⬅️ Anterior</button>
+                            <button id="revealNextBtn" class="btn btn-success">➡️ Revelar Próxima Nota</button>
+                            <button id="revealAllBtn" class="btn btn-primary">Revelar Tudo</button>
+                        </div>
+                        <span id="revelationStatusText" class="badge badge-primary">Modo Revelação: Desativado</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Tab: Configurações -->
@@ -316,6 +333,17 @@
                     </div>
 
                     <button id="saveTitlesBtn" class="btn btn-primary mt-md">Salvar Títulos</button>
+
+                    <div class="divider"></div>
+
+                    <!-- Modo TV/OBS (Fase 3) -->
+                    <div class="form-group mb-0" style="margin-bottom: 0;">
+                        <label class="flex items-center gap-sm cursor-pointer" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="chromaKeyInput">
+                            <span class="font-medium">Modo TV / OBS (Chroma Key - Fundo Verde)</span>
+                        </label>
+                        <p class="text-xs text-muted mt-xs">Substitui o fundo do telão por verde puro (#00FF00) para sobreposição de transmissão via OBS Studio ou vMix.</p>
+                    </div>
                 </div>
 
                 <div class="card mt-lg">
