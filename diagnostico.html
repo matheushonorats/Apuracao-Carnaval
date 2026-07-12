@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Diagnóstico - Apuração</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: monospace;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #00d2ff;
+            margin-bottom: 20px;
+        }
+
+        .test {
+            background: #16213e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #555;
+        }
+
+        .test.pass {
+            border-left-color: #00ff88;
+        }
+
+        .test.fail {
+            border-left-color: #ff4444;
+        }
+
+        .test.warn {
+            border-left-color: #ffaa00;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #00d2ff;
+        }
+
+        .pass .label {
+            color: #00ff88;
+        }
+
+        .fail .label {
+            color: #ff4444;
+        }
+
+        .warn .label {
+            color: #ffaa00;
+        }
+
+        .detail {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #aaa;
+            word-break: break-all;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+
+        button {
+            background: #00d2ff;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #00b8e6;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Diagnóstico do Sistema de Apuração</h1>
+    <button onclick="runDiagnostics()">Executar Diagnóstico</button>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addResult(label, status, detail) {
+            const div = document.createElement('div');
+            div.className = 'test ' + status;
+            div.innerHTML = `<span class="label">[${status.toUpperCase()}] ${label}</span>` +
+                (detail ? `<div class="detail">${detail}</div>` : '');
+            results.appendChild(div);
+        }
+
+        async function runDiagnostics() {
+            results.innerHTML = '<p style="color:#00d2ff;margin:10px 0;">Executando testes...</p>';
+            await new Promise(r => setTimeout(r, 100));
+            results.innerHTML = '';
+
+            // Test 1: Protocol Check
+            const protocol = window.location.protocol;
+            const url = window.location.href;
+            if (protocol === 'http:' || protocol === 'https:') {
+                addResult('Protocolo de acesso', 'pass', `Acessando via: ${url}`);
+            } else {
+                addResult('Protocolo de acesso', 'fail',
+                    `Você está acessando via: ${protocol} (${url}). ` +
+                    'PROBLEMA: Precisa acessar via http://localhost:3000/diagnostico.html');
+                return;
+            }
+
+            // Test 2: Server API
+            try {
+                const resp = await fetch('/api/data');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data) {
+                        const schools = data.schools || [];
+                        const settings = data.settings || {};
+                        addResult('API do servidor', 'pass',
+                            `Servidor respondendo. ${schools.length} escolas encontradas.`);
+
+                        // Test 3: Settings content
+                        const settingsKeys = Object.keys(settings);
+                        addResult('Configurações salvas', settingsKeys.length > 0 ? 'pass' : 'warn',
+                            `Chaves em settings: [${settingsKeys.join(', ') || 'VAZIO'}]`);
+
+                        // Test 4: Images in settings
+                        const hasGovLogo = !!settings.governmentLogo;
+                        const hasBgImage = !!settings.backgroundImage;
+                        addResult('Logo da Gestão em settings', hasGovLogo ? 'pass' : 'warn',
+                            hasGovLogo ? `Salvo (${settings.governmentLogo.substring(0, 50)}...)` : 'Não encontrado em data.settings');
+                        addResult('Imagem de Fundo em settings', hasBgImage ? 'pass' : 'warn',
+                            hasBgImage ? `Salvo (${settings.backgroundImage.substring(0, 50)}...)` : 'Não encontrado em data.settings');
+
+                        // Test 5: Check localStorage for old data
+                        const oldGovLogo = localStorage.getItem('governmentLogo');
+                        const oldBgImage = localStorage.getItem('backgroundImage');
+                        const oldLogoLeft = localStorage.getItem('logoLeft');
+                        const oldLogoRight = localStorage.getItem('logoRight');
+                        if (oldGovLogo || oldBgImage || oldLogoLeft || oldLogoRight) {
+                            addResult('Dados antigos no localStorage', 'warn',
+                                `Encontrados dados antigos no localStorage: ` +
+                                `governmentLogo=${!!oldGovLogo}, backgroundImage=${!!oldBgImage}, ` +
+                                `logoLeft=${!!oldLogoLeft}, logoRight=${!!oldLogoRight}. ` +
+                                'Estes dados NÃO são usados pelo sistema novo.');
+                        } else {
+                            addResult('Dados antigos no localStorage', 'pass', 'Nenhum dado antigo encontrado.');
+                        }
+
+                        // Test 6: Check school logos
+                        const schoolsWithLogos = schools.filter(s => s.logoDataURL);
+                        addResult('Logos das escolas', 'pass',
+                            `${schoolsWithLogos.length}/${schools.length} escolas têm logo salvo no data.json`);
+
+                    } else {
+                        addResult('API do servidor', 'warn', 'Servidor respondeu, mas data.json está vazio/null.');
+                    }
+                } else {
+                    addResult('API do servidor', 'fail', `Status: ${resp.status}`);
+                }
+            } catch (err) {
+                addResult('API do servidor', 'fail',
+                    `Erro: ${err.message}. O servidor node está rodando?`);
+            }
+
+            // Test 7: Check if admin.js loads correctly
+            try {
+                const jsResp = await fetch('/scripts/admin.js');
+                if (jsResp.ok) {
+                    const jsContent = await jsResp.text();
+                    const hasSetupMedia = jsContent.includes('setupMediaHandlers');
+                    const hasRenderPreview = jsContent.includes('_renderImagePreview');
+                    const hasRemoveImage = jsContent.includes('removeImage');
+                    const hasLogoLeft = jsContent.includes('logoLeft');
+
+                    addResult('admin.js - setupMediaHandlers', hasSetupMedia ? 'pass' : 'fail',
+                        hasSetupMedia ? 'Método encontrado' : 'MÉTODO NÃO ENCONTRADO!');
+                    addResult('admin.js - _renderImagePreview', hasRenderPreview ? 'pass' : 'fail',
+                        hasRenderPreview ? 'Método encontrado (gera preview com lixeira)' : 'MÉTODO NÃO ENCONTRADO!');
+                    addResult('admin.js - removeImage', hasRemoveImage ? 'pass' : 'fail',
+                        hasRemoveImage ? 'Método encontrado' : 'MÉTODO NÃO ENCONTRADO!');
+                    addResult('admin.js - logoLeft (antigo)', hasLogoLeft ? 'warn' : 'pass',
+                        hasLogoLeft ? 'AINDA contém referência ao logoLeft antigo' : 'Referência antiga removida ✓');
+                    addResult('admin.js - tamanho', 'pass', `${jsContent.length} bytes`);
+                } else {
+                    addResult('admin.js', 'fail', `Erro ao carregar: ${jsResp.status}`);
+                }
+            } catch (err) {
+                addResult('admin.js', 'fail', `Erro: ${err.message}`);
+            }
+
+            // Test 8: Check index.html
+            try {
+                const htmlResp = await fetch('/index.html');
+                if (htmlResp.ok) {
+                    const htmlContent = await htmlResp.text();
+                    const hasGovInput = htmlContent.includes('id="governmentLogo"');
+                    const hasBgInput = htmlContent.includes('id="backgroundImage"');
+                    const hasGovPreview = htmlContent.includes('id="governmentLogoPreview"');
+                    const hasBgPreview = htmlContent.includes('id="backgroundImagePreview"');
+                    const hasLeftLogo = htmlContent.includes('id="logoLeft"');
+                    const hasRightLogo = htmlContent.includes('id="logoRight"');
+
+                    addResult('index.html - Input governmentLogo', hasGovInput ? 'pass' : 'fail', '');
+                    addResult('index.html - Input backgroundImage', hasBgInput ? 'pass' : 'fail', '');
+                    addResult('index.html - Preview governmentLogo', hasGovPreview ? 'pass' : 'fail', '');
+                    addResult('index.html - Preview backgroundImage', hasBgPreview ? 'pass' : 'fail', '');
+                    addResult('index.html - logoLeft (removido?)', hasLeftLogo ? 'fail' : 'pass',
+                        hasLeftLogo ? 'AINDA existe no HTML!' : 'Removido ✓');
+                    addResult('index.html - logoRight (removido?)', hasRightLogo ? 'fail' : 'pass',
+                        hasRightLogo ? 'AINDA existe no HTML!' : 'Removido ✓');
+                }
+            } catch (err) {
+                addResult('index.html', 'fail', err.message);
+            }
+
+            // Test 9: Try StorageManager
+            try {
+                const sm = new StorageManager();
+                // Wait for init
+                await new Promise(r => setTimeout(r, 1000));
+                const settings = sm.getSettings();
+                addResult('StorageManager.getSettings()', 'pass',
+                    `Retornou: ${JSON.stringify(Object.keys(settings))}`);
+            } catch (err) {
+                addResult('StorageManager', 'fail', `Erro ao criar StorageManager: ${err.message}`);
+            }
+
+            addResult('Diagnóstico completo', 'pass', 'Copie esta tela e envie para análise.');
+        }
+    </script>
+    <script src="scripts/storage.js"></script>
+</body>
+
+</html>

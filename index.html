@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAMBA - Painel de Apuração</title>
+    <link rel="icon" type="image/png" href="assets/icone.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/admin.css">
+</head>
+
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container" style="text-align: center;">
+                <img src="assets/icone.png" alt="SSAMBA Logo" style="max-width: 120px; margin-bottom: 10px;">
+                <h1 style="font-size: 1.5rem; margin: 0;">SSAMBA</h1>
+                <p class="subtitle">Painel de Apuração</p>
+            </div>
+
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-tab="categories">
+                            <span class="icon">📋</span>
+                            <span>Quesitos</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-tab="judges">
+                            <span class="icon">👨‍⚖️</span>
+                            <span>Jurados</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link active" data-tab="schools">
+                            <span class="icon">🏫</span>
+                            <span>Agremiações</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-tab="scores">
+                            <span class="icon">✍️</span>
+                            <span>Lançamentos</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" data-tab="settings">
+                            <span class="icon">⚙️</span>
+                            <span>Configurações</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Tab: Escolas -->
+            <div id="schoolsTab" class="tab-content active">
+                <div class="page-header">
+                    <h2>Agremiações</h2>
+                    <p class="description">Cadastre e gerencie as agremiações participantes</p>
+                </div>
+
+                <div class="card">
+                    <form id="schoolForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="label" for="schoolName">Nome da Agremiação *</label>
+                                <input type="text" id="schoolName" name="schoolName" class="input"
+                                    placeholder="Ex: Unidos da Tijuca" required minlength="3">
+                            </div>
+                            <div class="form-group">
+                                <label class="label" for="schoolLogo">Logo/Brasão</label>
+                                <input type="file" id="schoolLogo" name="schoolLogo" accept="image/*" class="input">
+                            </div>
+                            <div class="form-group">
+                                <label class="label" for="schoolPenalty">Penalidade (Pontos)</label>
+                                <input type="number" id="schoolPenalty" name="schoolPenalty" class="input"
+                                    placeholder="0.0" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar Agremiação</button>
+                    </form>
+                </div>
+
+                <div id="schoolsList" class="items-list mt-lg"></div>
+            </div>
+
+            <!-- Tab: Jurados -->
+            <div id="judgesTab" class="tab-content">
+                <div class="page-header">
+                    <h2>Jurados</h2>
+                    <p class="description">Cadastre os jurados e atribua quesitos</p>
+                </div>
+
+                <div class="card">
+                    <form id="judgeForm">
+                        <div class="form-group">
+                            <label class="label" for="judgeName">Nome do Jurado *</label>
+                            <input type="text" id="judgeName" name="judgeName" class="input"
+                                placeholder="Ex: Maria Silva" required minlength="2">
+                        </div>
+                        <div class="form-group">
+                            <label class="label">Quesitos (deixe vazio para julgar todos)</label>
+                            <div id="judgeCategoriesContainer" class="flex flex-col gap-sm"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar Jurado</button>
+                    </form>
+                </div>
+
+                <div id="judgesList" class="items-list mt-lg"></div>
+            </div>
+
+            <!-- Tab: Quesitos -->
+            <div id="categoriesTab" class="tab-content">
+                <div class="page-header">
+                    <h2>Quesitos</h2>
+                    <p class="description">Defina os quesitos e sua ordem de exibição</p>
+                </div>
+
+                <div class="card">
+                    <form id="categoryForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="label" for="categoryName">Nome do Quesito *</label>
+                                <input type="text" id="categoryName" name="categoryName" class="input"
+                                    placeholder="Ex: Bateria" required minlength="2">
+                            </div>
+                            <div class="form-group">
+                                <label class="label" for="categoryOrder">Ordem *</label>
+                                <input type="number" id="categoryOrder" name="categoryOrder" class="input"
+                                    placeholder="1" required min="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar Quesito</button>
+                    </form>
+                </div>
+
+                <div id="categoriesList" class="items-list mt-lg"></div>
+            </div>
+
+            <!-- Tab: Lançamentos -->
+            <div id="scoresTab" class="tab-content">
+                <div class="page-header">
+                    <h2>Lançamento de Notas</h2>
+                    <p class="description">Lance as notas dos jurados (0 a 10)</p>
+                </div>
+
+                <div class="card">
+                    <div class="form-group">
+                        <label class="label" for="scoreCategorySelect">Selecione o Quesito</label>
+                        <select id="scoreCategorySelect" class="input">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+
+                    <!-- Controle do Telão UNIFICADO -->
+                    <div class="mini-view-controls mt-md"
+                        style="border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+
+                        <div style="flex: 1;">
+                            <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem;">Exibir na Tela Pública:</h4>
+                            <div class="view-buttons small">
+                                <button class="btn btn-view active" data-view="category"
+                                    onclick="changeView('category')">
+                                    <i class="fas fa-clipboard-list"></i> Quesito
+                                </button>
+                                <button class="btn btn-view" data-view="ranking" onclick="changeView('ranking')">
+                                    <i class="fas fa-list-ol"></i> Class. Geral
+                                </button>
+                                <button class="btn btn-view" data-view="transition" onclick="changeView('transition')">
+                                    <i class="fas fa-images"></i> Tela de espera
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button id="openDisplayBtn" class="btn btn-secondary btn-sm"
+                                style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>🖥️</span> Abrir Telão
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="scoresGridContainer" class="mt-lg"></div>
+
+                <button id="saveScoresBtn" class="btn btn-success mt-lg">Salvar Notas</button>
+            </div>
+
+            <!-- Tab: Configurações -->
+
+            <!-- Tab: Configurações -->
+            <div id="settingsTab" class="tab-content">
+                <div class="page-header">
+                    <h2>Configurações</h2>
+                    <p class="description">Estatísticas e gerenciamento de dados</p>
+                </div>
+
+                <div id="statsContainer"></div>
+
+                <div class="card mt-lg">
+                    <h3>Personalização do Display</h3>
+                    <div class="divider"></div>
+                    <div class="form-group">
+                        <label class="label" for="governmentLogo">Logo da Gestão (aparece no display público)</label>
+                        <input type="file" id="governmentLogo" accept="image/*" class="input">
+                        <p class="text-xs text-muted mt-xs">Recomendado: PNG transparente, até 2MB</p>
+                    </div>
+                    <div id="governmentLogoPreview" class="mt-md"></div>
+
+                    <div class="divider"></div>
+
+                    <div class="form-group">
+                        <label class="label" for="backgroundImage">Imagem de Fundo (Display)</label>
+                        <input type="file" id="backgroundImage" accept="image/*" class="input">
+                        <p class="text-xs text-muted mt-xs">Recomendado: 1920x1080 (HD), JPG ou PNG</p>
+                    </div>
+                    <div id="backgroundImagePreview" class="mt-md"></div>
+
+                    <div class="divider"></div>
+
+                    <div class="form-group">
+                        <label class="label" for="headerTitleInput">Título do Cabeçalho (Ranking/Quesitos)</label>
+                        <input type="text" id="headerTitleInput" class="input"
+                            placeholder="Ex: Apuração do Desfile das Escolas de Samba">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" for="transitionTitleInput">Título da Tela de Espera</label>
+                        <input type="text" id="transitionTitleInput" class="input"
+                            placeholder="Ex: APURAÇÃO DO CARNAVAL 2026">
+                    </div>
+
+                    <button id="saveTitlesBtn" class="btn btn-primary mt-md">Salvar Títulos</button>
+                </div>
+
+                <div class="card mt-lg">
+                    <h3>Relatórios</h3>
+                    <div class="divider"></div>
+                    <p class="mb-md">Gere relatórios detalhados para transparência e conferência.</p>
+                    <button id="generateReportBtn" class="btn btn-secondary w-full">
+                        📄 Gerar Relatório de Transparência
+                    </button>
+                </div>
+
+                <div class="card mt-lg">
+                    <h3>Critérios de Desempate</h3>
+                    <div class="divider"></div>
+                    <p class="text-sm text-muted mb-md">Em caso de empate na pontuação total, defina a ordem dos
+                        quesitos usados para desempate:</p>
+                    <div id="tiebreakerContainer"></div>
+                    <button id="saveTiebreakersBtn" class="btn btn-primary mt-md">Salvar Critérios</button>
+                </div>
+
+                <div class="card mt-lg">
+                    <h3>Gerenciamento de Dados</h3>
+                    <div class="divider"></div>
+
+                    <div class="flex flex-col gap-md">
+                        <button id="exportDataBtn" class="btn btn-primary">
+                            📥 Exportar Dados (JSON)
+                        </button>
+
+                        <div>
+                            <label for="importDataInput" class="btn btn-secondary cursor-pointer">
+                                📤 Importar Dados (JSON)
+                            </label>
+                            <input type="file" id="importDataInput" accept=".json" class="hidden">
+                        </div>
+
+                        <button id="clearDataBtn" class="btn btn-danger">
+                            🗑️ Limpar Todos os Dados
+                        </button>
+
+                        <button id="optimizeDataBtn" class="btn btn-secondary">
+                            🧹 Otimizar Banco de Dados
+                        </button>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </main>
+    </div>
+
+    <!-- Alert Container para Toast Messages -->
+    <div id="alertContainer"></div>
+
+    <!-- Scripts -->
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/admin.js"></script>
+</body>
+
+</html>

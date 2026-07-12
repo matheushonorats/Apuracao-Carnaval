@@ -1,0 +1,1557 @@
+/**
+ * AdminPanel - Gerenciador do painel administrativo
+ * Implementação robusta com validações completas e tratamento de erros
+ */
+
+class AdminPanel {
+    constructor() {
+        this.storage = new StorageManager();
+        this.currentTab = 'schools';
+        this.editingId = null;
+
+        // Bind event listeners
+        this.init();
+    }
+
+    /**
+     * Inicializa o painel
+     */
+    init() {
+        try { this.setupNavigation(); } catch (e) { console.error('setupNavigation:', e); }
+        try { this.setupForms(); } catch (e) { console.error('setupForms:', e); }
+        try { this.setupMediaHandlers(); } catch (e) { console.error('setupMediaHandlers:', e); }
+
+        // Listener para atualizações
+        try {
+            this.storage.addListener((dataType) => {
+                try { this.handleDataUpdate(dataType); } catch (e) { console.error('handleDataUpdate:', e); }
+            });
+        } catch (e) { console.error('addListener:', e); }
+
+        try { this.loadAllData(); } catch (e) { console.error('loadAllData:', e); }
+
+        // Criar container de alertas se não existir
+        if (!document.getElementById('alertContainer')) {
+            const container = document.createElement('div');
+            container.id = 'alertContainer';
+            document.body.appendChild(container);
+        }
+
+        // Re-renderizar previews após StorageManager terminar de carregar do servidor
+        setTimeout(() => {
+            try { this.setupMediaHandlers(); } catch (e) { console.error('setupMediaHandlers retry:', e); }
+        }, 1500);
+
+        console.log('✅ AdminPanel inicializado com sucesso');
+    }
+
+    setupMediaHandlers() {
+        // Logo Gestão (Central/Principal)
+        this.setupImageUpload('governmentLogo', 'governmentLogo', 10);
+
+        // Background
+        this.setupImageUpload('backgroundImage', 'backgroundImage', 10);
+
+        // Textos Personalizados
+        this.setupTextHandlers();
+    }
+
+    setupTextHandlers() {
+        const headerInput = document.getElementById('headerTitleInput');
+        const transitionInput = document.getElementById('transitionTitleInput');
+        const saveBtn = document.getElementById('saveTitlesBtn');
+
+        if (!headerInput || !transitionInput || !saveBtn) return;
+
+        // Carregar valores atuais
+        const settings = this.storage.getSettings();
+        headerInput.value = settings.headerTitle || 'Apuração do Desfile das Escolas de Samba do Carnaval';
+        transitionInput.value = settings.transitionTitle || 'APURAÇÃO DO DESFILE DAS ESCOLAS DE SAMBA DO CARNAVAL 2026';
+
+        saveBtn.addEventListener('click', () => {
+            const newHeader = headerInput.value.trim();
+            const newTransition = transitionInput.value.trim();
+
+            this.storage.updateSettings({
+                headerTitle: newHeader,
+                transitionTitle: newTransition
+            });
+
+            this.showAlert('✅ Títulos atualizados com sucesso!', 'success');
+        });
+    }
+
+    setupImageUpload(inputId, storageKey, maxSizeMB) {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(`${inputId}Preview`);
+
+        if (!input) return;
+
+        // Carregar imagem salva das configurações sincronizadas
+        const settings = this.storage.getSettings();
+        const savedImage = settings[storageKey];
+        if (savedImage && preview) {
+            this._renderImagePreview(preview, savedImage, storageKey, inputId);
+        }
+
+        input.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > maxSizeMB * 1024 * 1024) {
+                this.showAlert(`A imagem deve ser menor que ${maxSizeMB}MB`, 'error');
+                input.value = '';
+                return;
+            }
+
+            try {
+                const base64 = await this.fileToDataURL(file);
+
+                // Salvar nas configurações sincronizadas (vai para data.json)
+                const update = {};
+                update[storageKey] = base64;
+                this.storage.updateSettings(update);
+
+                if (preview) {
+                    this._renderImagePreview(preview, base64, storageKey, inputId);
+                }
+
+                this.showAlert('✅ Imagem salva!', 'success');
+
+            } catch (err) {
+                console.error('Erro ao processar imagem:', err);
+                this.showAlert('Erro ao processar a imagem.', 'error');
+            }
+        });
+    }
+
+    _renderImagePreview(container, base64, storageKey, inputId) {
+        container.innerHTML = `
+            <div class="flex items-center gap-md">
+                <img src="${base64}" style="max-height: 100px; max-width: 300px; border-radius: 4px; object-fit: contain;">
+                <button class="btn btn-danger btn-icon" onclick="window.adminPanel.removeImage('${storageKey}', '${inputId}')" title="Remover">&#128465;</button>
+            </div>
+        `;
+    }
+
+    removeImage(storageKey, inputId) {
+        if (confirm('Remover esta imagem?')) {
+            const update = {};
+            update[storageKey] = null;
+            this.storage.updateSettings(update);
+
+            const preview = document.getElementById(`${inputId}Preview`);
+            if (preview) preview.innerHTML = '';
+
+            const input = document.getElementById(inputId);
+            if (input) input.value = '';
+
+            this.showAlert('✅ Imagem removida', 'success');
+        }
+    }
+
+    fileToDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /**
+     * Configurar navegação entre abas
+     */
+    setupNavigation() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tab = link.dataset.tab;
+                if (tab) {
+                    this.switchTab(tab);
+                }
+            });
+        });
+    }
+
+    /**
+     * Trocar aba ativa
+     */
+    switchTab(tabName) {
+        // Atualizar navegação
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.toggle('active', link.dataset.tab === tabName);
+        });
+
+        // Atualizar conteúdo
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}Tab`);
+        });
+
+        this.currentTab = tabName;
+
+        // Recarregar dados da aba
+        this.loadTabData(tabName);
+    }
+
+
+    /**
+     * Configurar todos os formulários
+     */
+    setupForms() {
+        // Formulário de escolas
+        const schoolForm = document.getElementById('schoolForm');
+        if (schoolForm) {
+            schoolForm.addEventListener('submit', (e) => this.handleSchoolSubmit(e));
+        }
+
+        // Formulário de jurados
+        const judgeForm = document.getElementById('judgeForm');
+        if (judgeForm) {
+            judgeForm.addEventListener('submit', (e) => this.handleJudgeSubmit(e));
+        }
+
+        // Formulário de quesitos
+        const categoryForm = document.getElementById('categoryForm');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', (e) => this.handleCategorySubmit(e));
+        }
+
+        // Botão de salvar notas
+        const saveScoresBtn = document.getElementById('saveScoresBtn');
+        if (saveScoresBtn) {
+            saveScoresBtn.addEventListener('click', () => this.handleSaveScores());
+        }
+
+        // Seletor de quesito para lançamento
+        const categorySelect = document.getElementById('scoreCategorySelect');
+        if (categorySelect) {
+            categorySelect.addEventListener('change', (e) => {
+                this.loadScoresGrid(e.target.value);
+                // Sincronizar display público com o quesito selecionado
+                if (e.target.value) {
+                    this.storage.updateDisplayControl({ currentCategoryId: e.target.value });
+                }
+            });
+        }
+
+        // Controle de exibição
+        this.setupDisplayControls();
+
+        // Export/Import
+        this.setupDataManagement();
+
+        // Desempate
+        this.setupTiebreakers();
+    }
+
+    /* ===== ESCOLAS ===== */
+
+    async handleSchoolSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        try {
+            const name = form.schoolName.value.trim();
+            const penalty = form.schoolPenalty.value;
+            const logoFile = form.schoolLogo.files[0];
+
+            // Validações
+            if (!name || name.length < 3) {
+                this.showAlert('❌ O nome da agremiação deve ter pelo menos 3 caracteres', 'error');
+                form.schoolName.focus();
+                return;
+            }
+
+            // Verificar duplicatas
+            const schools = this.storage.getSchools();
+            const isDuplicate = schools.some(s =>
+                s.name.toLowerCase() === name.toLowerCase() &&
+                s.id !== this.editingId
+            );
+
+            if (isDuplicate) {
+                this.showAlert('❌ Já existe uma agremiação com este nome', 'error');
+                form.schoolName.focus();
+                return;
+            }
+
+            // Validar logo se fornecido
+            let logoDataURL = null;
+            if (logoFile) {
+                const validation = await this.validateImage(logoFile);
+                if (!validation.valid) {
+                    this.showAlert(`❌ ${validation.error}`, 'error');
+                    return;
+                }
+                logoDataURL = await this.fileToDataURL(logoFile);
+            }
+
+            // Loading state
+            this.setButtonLoading(submitBtn, true);
+
+            // Salvar
+            if (this.editingId) {
+                const updates = { name, penalty: penalty ? parseFloat(penalty) : 0 };
+                if (logoDataURL) updates.logoDataURL = logoDataURL;
+                this.storage.updateSchool(this.editingId, updates);
+                this.showAlert('✅ Agremiação atualizada com sucesso!', 'success');
+                this.editingId = null;
+            } else {
+                const newSchool = this.storage.addSchool(name, logoDataURL);
+                if (penalty) {
+                    this.storage.updateSchoolPenalty(newSchool.id, penalty);
+                }
+                this.showAlert('✅ Agremiação adicionada com sucesso!', 'success');
+            }
+
+            // Resetar formulário
+            form.reset();
+            submitBtn.textContent = 'Adicionar Agremiação';
+            submitBtn.classList.remove('btn-success');
+            this.editingId = null;
+            this.updateFileLabel('schoolLogo', 'Escolher logo...');
+
+        } catch (error) {
+            console.error('Erro ao salvar escola:', error);
+            this.showAlert('❌ Erro ao salvar agremiação: ' + error.message, 'error');
+        } finally {
+            this.setButtonLoading(submitBtn, false);
+        }
+    }
+
+    renderSchools() {
+        console.log('🔄 RenderSchools: Iniciando renderização...');
+        const schools = this.storage.getSchools();
+        console.log(`📊 Escolas encontradas: ${schools.length}`);
+
+        const container = document.getElementById('schoolsList');
+        if (!container) {
+            console.error('❌ RenderSchools: Container #schoolsList não encontrado!');
+            return;
+        }
+
+        if (schools.length === 0) {
+            console.log('ℹ️ Nenhuma escola para exibir.');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">🎭</div>
+                    <h3>Nenhuma agremiação cadastrada</h3>
+                    <p>Adicione a primeira agremiação usando o formulário acima</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = schools.map(school => `
+            <div class="item-card slide-in-up">
+                <img src="${school.logoDataURL || 'assets/default-logo.png'}" 
+                     alt="${school.name}" 
+                     class="item-logo"
+                     onerror="this.src='assets/default-logo.png'">
+                <div class="item-info">
+                    <div class="item-name">${this.escapeHtml(school.name)}</div>
+                    <div class="item-meta">Cadastrada em ${this.formatDate(school.createdAt)}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-secondary btn-icon" 
+                            onclick="adminPanel.editSchool('${school.id}')"
+                            title="Editar">
+                        ✏️
+                    </button>
+                    <button class="btn btn-danger btn-icon" 
+                            onclick="adminPanel.deleteSchool('${school.id}')"
+                            title="Excluir">
+                        🗑️
+                    </button>
+                </div>
+            </div >
+            `).join('');
+    }
+
+    editSchool(id) {
+        const school = this.storage.getSchools().find(s => s.id === id);
+        if (!school) {
+            console.error('editSchool: escola não encontrada:', id);
+            return;
+        }
+
+        console.log('editSchool:', id, school.name);
+
+        const form = document.getElementById('schoolForm');
+        form.schoolName.value = school.name;
+        form.schoolPenalty.value = school.penalty || '';
+
+        this.editingId = id;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.textContent = '💾 Atualizar Agremiação';
+        submitBtn.classList.add('btn-success');
+
+        this.showAlert(`✏️ Editando: ${school.name}. Altere os dados e clique em Atualizar.`, 'info');
+
+        // Scroll to form
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    deleteSchool(id) {
+        const school = this.storage.getSchools().find(s => s.id === id);
+        if (!school) return;
+
+        const scores = this.storage.getScoresBySchool(id);
+        const hasScores = scores.length > 0;
+
+        const confirmMsg = hasScores
+            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${school.name}" ?\n\n` +
+            `Todas as ${scores.length} nota(s) desta escola serão PERDIDAS permanentemente!`
+            : `Confirma a exclusão de "${school.name}" ? `;
+
+        if (confirm(confirmMsg)) {
+            try {
+                this.storage.deleteSchool(id);
+                this.showAlert('✅ Agremiação excluída com sucesso', 'success');
+            } catch (error) {
+                console.error('Erro ao excluir escola:', error);
+                this.showAlert('❌ Erro ao excluir agremiação', 'error');
+            }
+        }
+    }
+
+    /* ===== JURADOS ===== */
+
+    async handleJudgeSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        try {
+            const name = form.judgeName.value.trim();
+            const categoryCheckboxes = form.querySelectorAll('input[name="judgeCategories"]:checked');
+            const categoryIds = Array.from(categoryCheckboxes).map(cb => cb.value);
+
+            // Validações
+            if (!name || name.length < 2) {
+                this.showAlert('❌ O nome do jurado deve ter pelo menos 2 caracteres', 'error');
+                form.judgeName.focus();
+                return;
+            }
+
+            // Verificar duplicatas
+            const judges = this.storage.getJudges();
+            const isDuplicate = judges.some(j =>
+                j.name.toLowerCase() === name.toLowerCase() &&
+                j.id !== this.editingId
+            );
+
+            if (isDuplicate) {
+                this.showAlert('❌ Já existe um jurado com este nome', 'error');
+                return;
+            }
+
+            this.setButtonLoading(submitBtn, true);
+
+            if (this.editingId) {
+                this.storage.updateJudge(this.editingId, { name, categoryIds });
+                this.showAlert('✅ Jurado atualizado com sucesso!', 'success');
+                this.editingId = null;
+            } else {
+                this.storage.addJudge(name, categoryIds);
+                this.showAlert('✅ Jurado adicionado com sucesso!', 'success');
+            }
+
+            form.reset();
+
+        } catch (error) {
+            console.error('Erro ao salvar jurado:', error);
+            this.showAlert('❌ Erro ao salvar jurado: ' + error.message, 'error');
+        } finally {
+            this.setButtonLoading(submitBtn, false);
+        }
+    }
+
+    renderJudges() {
+        const judges = this.storage.getJudges();
+        const categories = this.storage.getCategories();
+        const container = document.getElementById('judgesList');
+
+        if (!container) return;
+
+        if (judges.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state">
+                    <div class="icon">👨‍⚖️</div>
+                    <h3>Nenhum jurado cadastrado</h3>
+                    <p>Adicione o primeiro jurado usando o formulário acima</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = judges.map(judge => {
+            const judgeCats = judge.categoryIds && judge.categoryIds.length > 0
+                ? categories.filter(c => judge.categoryIds.includes(c.id)).map(c => c.name).join(', ')
+                : 'Todos os quesitos';
+
+            return `
+            <div class="item-card slide-in-up">
+                    <div class="item-logo" style="display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                        👨‍⚖️
+                    </div>
+                    <div class="item-info">
+                        <div class="item-name">${this.escapeHtml(judge.name)}</div>
+                        <div class="item-meta">${this.escapeHtml(judgeCats)}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-secondary btn-icon" 
+                                onclick="adminPanel.editJudge('${judge.id}')"
+                                title="Editar">
+                            ✏️
+                        </button>
+                        <button class="btn btn-danger btn-icon" 
+                                onclick="adminPanel.deleteJudge('${judge.id}')"
+                                title="Excluir">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    editJudge(id) {
+        const judge = this.storage.getJudges().find(j => j.id === id);
+        if (!judge) return;
+
+        const form = document.getElementById('judgeForm');
+        form.judgeName.value = judge.name;
+
+        // Marcar checkboxes
+        const checkboxes = form.querySelectorAll('input[name="judgeCategories"]');
+        checkboxes.forEach(cb => {
+            cb.checked = judge.categoryIds && judge.categoryIds.includes(cb.value);
+        });
+
+        this.editingId = id;
+        form.querySelector('button[type="submit"]').textContent = 'Atualizar Jurado';
+
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    deleteJudge(id) {
+        const judge = this.storage.getJudges().find(j => j.id === id);
+        if (!judge) return;
+
+        const scores = this.storage.getScores().filter(s => s.judgeId === id);
+        const hasScores = scores.length > 0;
+
+        const confirmMsg = hasScores
+            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${judge.name}" ?\n\n` +
+            `Todas as ${scores.length} nota(s) deste jurado serão PERDIDAS!`
+            : `Confirma a exclusão de "${judge.name}" ? `;
+
+        if (confirm(confirmMsg)) {
+            try {
+                this.storage.deleteJudge(id);
+                this.showAlert('✅ Jurado excluído com sucesso', 'success');
+            } catch (error) {
+                console.error('Erro ao excluir jurado:', error);
+                this.showAlert('❌ Erro ao excluir jurado', 'error');
+            }
+        }
+    }
+
+    renderJudgeCategoryCheckboxes() {
+        const categories = this.storage.getCategories();
+        const container = document.getElementById('judgeCategoriesContainer');
+
+        if (!container) return;
+
+        if (categories.length === 0) {
+            container.innerHTML = '<p class="text-muted text-sm">Cadastre quesitos primeiro</p>';
+            return;
+        }
+
+        container.innerHTML = categories.map(cat => `
+            <label class="flex items-center gap-sm cursor-pointer">
+                <input type="checkbox" name="judgeCategories" value="${cat.id}">
+                    <span>${this.escapeHtml(cat.name)}</span>
+                </label>
+        `).join('');
+    }
+
+    /* ===== QUESITOS/CATEGORIAS ===== */
+
+    async handleCategorySubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        try {
+            const name = form.categoryName.value.trim();
+            const order = parseInt(form.categoryOrder.value) || 0;
+
+            // Validações
+            if (!name || name.length < 2) {
+                this.showAlert('❌ O nome do quesito deve ter pelo menos 2 caracteres', 'error');
+                form.categoryName.focus();
+                return;
+            }
+
+            if (order <= 0) {
+                this.showAlert('❌ A ordem deve ser um número maior que zero', 'error');
+                form.categoryOrder.focus();
+                return;
+            }
+
+            // Verificar duplicatas
+            const categories = this.storage.getCategories();
+            const isDuplicate = categories.some(c =>
+                c.name.toLowerCase() === name.toLowerCase() &&
+                c.id !== this.editingId
+            );
+
+            if (isDuplicate) {
+                this.showAlert('❌ Já existe um quesito com este nome', 'error');
+                return;
+            }
+
+            this.setButtonLoading(submitBtn, true);
+
+            if (this.editingId) {
+                this.storage.updateCategory(this.editingId, { name, order });
+                this.showAlert('✅ Quesito atualizado com sucesso!', 'success');
+                this.editingId = null;
+            } else {
+                this.storage.addCategory(name, order);
+                this.showAlert('✅ Quesito adicionado com sucesso!', 'success');
+            }
+
+            form.reset();
+
+            // Atualizar componentes que dependem de categorias
+            this.renderJudgeCategoryCheckboxes();
+            this.populateCategorySelects();
+
+        } catch (error) {
+            console.error('Erro ao salvar quesito:', error);
+            this.showAlert('❌ Erro ao salvar quesito: ' + error.message, 'error');
+        } finally {
+            this.setButtonLoading(submitBtn, false);
+        }
+    }
+
+    renderCategories() {
+        const categories = this.storage.getCategories().sort((a, b) => a.order - b.order);
+
+        // Atualizar checkboxes de jurados também
+        this.renderJudgeCategoryCheckboxes();
+        const container = document.getElementById('categoriesList');
+
+        if (!container) return;
+
+        if (categories.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state">
+                    <div class="icon">📋</div>
+                    <h3>Nenhum quesito cadastrado</h3>
+                    <p>Adicione o primeiro quesito usando o formulário acima</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = categories.map(cat => `
+            <div class="item-card slide-in-up">
+                <div class="item-logo" style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
+                    ${cat.order}
+                </div>
+                <div class="item-info">
+                    <div class="item-name">${this.escapeHtml(cat.name)}</div>
+                    <div class="item-meta">Ordem de exibição: ${cat.order}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-secondary btn-icon" 
+                            onclick="adminPanel.editCategory('${cat.id}')"
+                            title="Editar">
+                        ✏️
+                    </button>
+                    <button class="btn btn-danger btn-icon" 
+                            onclick="adminPanel.deleteCategory('${cat.id}')"
+                            title="Excluir">
+                        🗑️
+                    </button>
+                </div>
+            </div >
+            `).join('');
+    }
+
+    editCategory(id) {
+        const category = this.storage.getCategories().find(c => c.id === id);
+        if (!category) return;
+
+        const form = document.getElementById('categoryForm');
+        form.categoryName.value = category.name;
+        form.categoryOrder.value = category.order;
+
+        this.editingId = id;
+        form.querySelector('button[type="submit"]').textContent = 'Atualizar Quesito';
+
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    deleteCategory(id) {
+        const category = this.storage.getCategories().find(c => c.id === id);
+        if (!category) return;
+
+        const scores = this.storage.getScoresByCategory(id);
+        const hasScores = scores.length > 0;
+
+        const confirmMsg = hasScores
+            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${category.name}" ?\n\n` +
+            `Todas as ${scores.length} nota(s) deste quesito serão PERDIDAS!`
+            : `Confirma a exclusão de "${category.name}" ? `;
+
+        if (confirm(confirmMsg)) {
+            try {
+                this.storage.deleteCategory(id);
+                this.showAlert('✅ Quesito excluído com sucesso', 'success');
+            } catch (error) {
+                console.error('Erro ao excluir quesito:', error);
+                this.showAlert('❌ Erro ao excluir quesito', 'error');
+            }
+        }
+    }
+
+    /* CONTINUA NA PARTE 2... */
+    /* ===== LANÇAMENTO DE NOTAS ===== */
+
+    loadScoresGrid(categoryId, focusIndex = null) {
+        if (!categoryId) {
+            document.getElementById('scoresGridContainer').innerHTML = `
+            <p class="text-muted">Selecione um quesito acima para lançar as notas</p>
+                `;
+            return;
+        }
+
+        // ATUALIZAÇÃO SOLICITADA: Sincronizar display com o quesito sendo lançado
+        localStorage.setItem('currentDisplayCategory', categoryId);
+
+        // Se estivermos na view de apuração, garantir que ela esteja ativa
+        const currentView = localStorage.getItem('currentView');
+        if (currentView === 'category') {
+            this.storage.notifyListeners('display_control');
+        }
+
+        // Atualizar também o select da aba de controle (visual apenas)
+        const displaySelect = document.getElementById('displayCategorySelect');
+        if (displaySelect) displaySelect.value = categoryId;
+
+        const schools = this.storage.getSchools();
+        const judges = this.storage.getJudges();
+        const category = this.storage.getCategories().find(c => c.id === categoryId);
+
+        if (!category) return;
+
+        // Filtrar jurados que julgam este quesito
+        const relevantJudges = judges.filter(j =>
+            !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(categoryId)
+        );
+
+        if (relevantJudges.length === 0) {
+            document.getElementById('scoresGridContainer').innerHTML = `
+                <div class="empty-state">
+                <div class="icon">⚠️</div>
+                <h3>Nenhum jurado disponível</h3>
+                <p>Cadastre jurados que avaliam este quesito</p>
+            </div>
+            `;
+            return;
+        }
+
+        if (schools.length === 0) {
+            document.getElementById('scoresGridContainer').innerHTML = `
+            <div class="empty-state">
+                <div class="icon">⚠️</div>
+                <h3>Nenhuma agremiação cadastrada</h3>
+                <p>Cadastre agremiações primeiro</p>
+            </div>
+            `;
+            return;
+        }
+
+        // Obter notas existentes
+        const existingScores = this.storage.getScoresByCategory(categoryId);
+
+        // Montar tabela
+        let html = `
+            <div class="scores-grid">
+                <table class="scores-table">
+                    <thead>
+                        <tr>
+                            <th>Agremiação</th>
+                            ${relevantJudges.map(j => `<th>${this.escapeHtml(j.name)}</th>`).join('')}
+                            <th>Parcial</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        `;
+
+        schools.forEach(school => {
+            html += `<tr>`;
+            html += `<td>${this.escapeHtml(school.name)}</td>`;
+
+            relevantJudges.forEach(judge => {
+                const score = existingScores.find(s =>
+                    s.schoolId === school.id && s.judgeId === judge.id
+                );
+                const value = score ? score.score : '';
+
+                html += `
+                        <td>
+                            <input type="number"
+                                class="input"
+                                data-school="${school.id}"
+                                data-judge="${judge.id}"
+                                data-category="${categoryId}"
+                                value="${value}"
+                                min="0"
+                                max="10"
+                                step="0.1"
+                                placeholder="0.0">
+                        </td>
+                        `;
+            });
+
+            // Calcular total do Quesito
+            const schoolTotal = this.storage.getSchoolCategoryTotal(school.id, categoryId);
+
+            // Calcular total GERAL (todas as notas)
+            const schoolGrandTotal = this.storage.getSchoolTotal(school.id);
+
+            html += `<td class="text-center" style="background-color: #1e293b; color: #fff;"><strong>${schoolTotal.toFixed(1)}</strong></td>`;
+            html += `<td class="text-center" style="background-color: #0f172a; color: #fff; border-left: 1px solid #334155;"><strong>${schoolGrandTotal.toFixed(1)}</strong></td>`;
+
+            html += `</tr>`;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        </div>
+            `;
+
+        document.getElementById('scoresGridContainer').innerHTML = html;
+
+        // Adicionar listeners para Enter, Focus e Blur
+        const inputs = document.querySelectorAll('#scoresGridContainer input[type="number"]');
+        const table = document.querySelector('#scoresGridContainer table');
+
+        inputs.forEach((input, index) => {
+            // ENTER: Navegação e Salvar com Feedback
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // Navegação Vertical
+                    const nextIndex = index + relevantJudges.length;
+
+                    // Se estiver na última linha, apenas salva e recarrega
+                    // Se tiver próxima, foca nela após salvar (via handleSaveScores recarregando grid)
+                    this.handleSaveScores(nextIndex);
+                }
+            });
+
+            // FOCUS: Highlight
+            input.addEventListener('focus', () => {
+                const tr = input.closest('tr');
+                if (tr) tr.classList.add('row-highlight');
+
+                const td = input.closest('td');
+                if (td && table) {
+                    const cellIndex = td.cellIndex;
+                    // Adicionar highlight em todas as células desta coluna
+                    const rows = table.querySelectorAll('tbody tr');
+                    rows.forEach(row => {
+                        if (row.cells[cellIndex]) row.cells[cellIndex].classList.add('col-highlight');
+                    });
+                }
+            });
+
+            // BLUR: Remove Highlight + Auto-Save (Silent)
+            input.addEventListener('blur', () => {
+                const tr = input.closest('tr');
+                if (tr) tr.classList.remove('row-highlight');
+
+                const td = input.closest('td');
+                if (td && table) {
+                    const cellIndex = td.cellIndex;
+                    const rows = table.querySelectorAll('tbody tr');
+                    rows.forEach(row => {
+                        if (row.cells[cellIndex]) row.cells[cellIndex].classList.remove('col-highlight');
+                    });
+                }
+
+                // Salvar sileciosamente ao sair do campo
+                // Passamos true para 'silent' para não exibir alertas nem recarregar a grid (para não perder foco se o usuário clicou rapidamente em outro campo)
+                this.handleSaveScores(null, true);
+            });
+        });
+
+        if (focusIndex !== null && inputs.length > 0) {
+            if (focusIndex < inputs.length) {
+                inputs[focusIndex].focus();
+            }
+        }
+    }
+
+    handleSaveScores(nextFocusIndex = null, silent = false) {
+        const categorySelect = document.getElementById('scoreCategorySelect');
+        const categoryId = categorySelect.value;
+
+        if (!categoryId) {
+            if (!silent) this.showAlert('⚠️ Selecione um quesito primeiro', 'warning');
+            return;
+        }
+
+        const inputs = document.querySelectorAll('#scoresGridContainer input[type="number"]');
+        const scoresToSave = [];
+        let hasInvalidScore = false;
+        let invalidCount = 0;
+
+        // Validar todas as notas primeiro
+        inputs.forEach(input => {
+            const value = input.value.trim();
+
+            // Remover destaque anterior
+            input.classList.remove('input-error');
+
+            if (value !== '') {
+                const numValue = parseFloat(value);
+
+                if (isNaN(numValue) || numValue < 0 || numValue > 10) {
+                    hasInvalidScore = true;
+                    invalidCount++;
+                    input.classList.add('input-error');
+                } else {
+                    scoresToSave.push({
+                        schoolId: input.dataset.school,
+                        categoryId: input.dataset.category,
+                        judgeId: input.dataset.judge,
+                        score: numValue
+                    });
+                }
+            }
+        });
+
+        if (hasInvalidScore) {
+            if (!silent) {
+                this.showAlert(
+                    `❌ ${invalidCount} nota(s) inválida(s)! As notas devem estar entre 0 e 10`,
+                    'error'
+                );
+            }
+            return;
+        }
+
+        if (scoresToSave.length === 0) {
+            // Se estiver limpando tudo e silent, ok.
+            if (!silent) this.showAlert('⚠️ Nenhuma nota foi informada', 'warning');
+            return;
+        }
+
+        try {
+            this.storage.saveScores(scoresToSave);
+
+            if (!silent) {
+                this.showAlert(`✅ ${scoresToSave.length} nota(s) salva(s) com sucesso!`, 'success');
+                // Recarregar grid para mostrar totais atualizados e mover foco
+                this.loadScoresGrid(categoryId, nextFocusIndex);
+            } else {
+                console.log('✅ Auto-save realizado.');
+                // Em modo silencioso, NÃO recarregamos a grid para não destruir o foco do usuário
+                // O usuário verá os totais atualizados na próxima interação que recarregar a grid (Enter ou Refresh manual)
+            }
+
+        } catch (error) {
+            console.error('Erro ao salvar notas:', error);
+            if (!silent) this.showAlert('❌ Erro ao salvar notas', 'error');
+        }
+    }
+
+
+    /* ===== CONTROLE DE EXIBIÇÃO ===== */
+
+    setupDisplayControls() {
+        // Sincronizar botões de visualização (Scores Tab)
+        window.changeView = (viewName) => {
+            // Atualizar botões na aba Scores
+            document.querySelectorAll('.btn-view').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === viewName);
+            });
+
+            // Atualizar opções na aba Display Control (View Toggle)
+            document.querySelectorAll('.view-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.view === viewName);
+            });
+
+            // Salvar estado no displayControl estruturado (display.js lê daqui)
+            const updates = { view: viewName };
+            // Ao clicar em Apuração, sincronizar com o quesito selecionado
+            if (viewName === 'category') {
+                const scoreSelect = document.getElementById('scoreCategorySelect');
+                if (scoreSelect && scoreSelect.value) {
+                    updates.currentCategoryId = scoreSelect.value;
+                    localStorage.setItem('currentDisplayCategory', scoreSelect.value);
+                }
+            }
+            this.storage.updateDisplayControl(updates);
+        };
+
+        // Listeners para os botões da aba Controle (Options grandes)
+        document.querySelectorAll('.view-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const view = option.dataset.view;
+                if (view) window.changeView(view);
+            });
+        });
+
+        // Restaurar estado ativo inicial a partir do storage estruturado
+        const savedControl = this.storage.getDisplayControl();
+        const currentView = savedControl.view || 'category';
+        // Apenas atualizar UI visual, sem re-salvar (evita loop)
+        document.querySelectorAll('.btn-view').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === currentView);
+        });
+        document.querySelectorAll('.view-option').forEach(option => {
+            option.classList.toggle('active', option.dataset.view === currentView);
+        });
+
+        const displayCategorySelect = document.getElementById('displayCategorySelect');
+        const scoreCategorySelect = document.getElementById('scoreCategorySelect');
+
+        if (displayCategorySelect) {
+            displayCategorySelect.addEventListener('change', (e) => {
+                localStorage.setItem('currentDisplayCategory', e.target.value);
+                // Sincronizar score tab se necessário
+                if (scoreCategorySelect && scoreCategorySelect.value !== e.target.value) {
+                    // scoreCategorySelect.value = e.target.value; // Opcional
+                }
+                this.storage.notifyChange('display_control');
+            });
+        }
+
+        const openBtn = document.getElementById('openDisplayBtn');
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                window.open('display.html', 'SambaDisplay', 'width=1280,height=720');
+            });
+        }
+    }
+    // Carregar estado atual
+    loadDisplayControlState() {
+        const control = this.storage.getDisplayControl();
+
+        // Marcar vista ativa
+        document.querySelectorAll('[data-view]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === control.view);
+        });
+
+        // Selecionar quesito
+        const select = document.getElementById('displayCategorySelect');
+        if (select && control.currentCategoryId) {
+            select.value = control.currentCategoryId;
+        }
+    }
+
+    populateCategorySelects() {
+        const categories = this.storage.getCategories().sort((a, b) => a.order - b.order);
+
+        // Select de lançamento - preservar seleção atual
+        const scoreSelect = document.getElementById('scoreCategorySelect');
+        if (scoreSelect) {
+            const savedValue = scoreSelect.value;
+            scoreSelect.innerHTML = '<option value="">Selecione um quesito...</option>' +
+                categories.map(c => `<option value="${c.id}">${this.escapeHtml(c.name)}</option>`).join('');
+            if (savedValue) scoreSelect.value = savedValue;
+        }
+
+        // Select de controle de exibição - preservar seleção atual
+        const displaySelect = document.getElementById('displayCategorySelect');
+        if (displaySelect) {
+            const savedValue = displaySelect.value;
+            displaySelect.innerHTML = '<option value="">Selecione um quesito...</option>' +
+                categories.map(c => `<option value="${c.id}">${this.escapeHtml(c.name)}</option>`).join('');
+            if (savedValue) displaySelect.value = savedValue;
+        }
+    }
+
+    /* ===== CONFIGURAÇÕES ===== */
+
+    setupDataManagement() {
+        // Export
+        const exportBtn = document.getElementById('exportDataBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                try {
+                    this.storage.exportData();
+                    this.showAlert('✅ Dados exportados com sucesso!', 'success');
+                } catch (error) {
+                    console.error('Erro ao exportar:', error);
+                    this.showAlert('❌ Erro ao exportar dados', 'error');
+                }
+            });
+        }
+
+        // Import
+        const importInput = document.getElementById('importDataInput');
+        if (importInput) {
+            importInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    await this.storage.importData(file);
+                    this.showAlert('✅ Dados importados com sucesso!', 'success');
+                    this.loadAllData();
+                } catch (error) {
+                    console.error('Erro ao importar:', error);
+                    this.showAlert('❌ Erro ao importar dados: ' + error.message, 'error');
+                }
+
+                e.target.value = ''; // Reset input
+            });
+        }
+
+        // Clear
+        const clearBtn = document.getElementById('clearDataBtn');
+        clearBtn.addEventListener('click', () => {
+            // ALTERADO: Limpar APENAS NOTAS, mantendo cadastros
+            if (this.storage.clearScoresOnly()) {
+                this.showAlert('✅ Notas zeradas com sucesso (Cadastros mantidos)', 'success');
+            }
+        });
+
+        // Otimizar Banco
+        const optimizeBtn = document.getElementById('optimizeDataBtn');
+        if (optimizeBtn) {
+            optimizeBtn.addEventListener('click', () => {
+                const removed = this.storage.optimizeData();
+                if (removed > 0) {
+                    this.showAlert(`✅ Otimização completa! ${removed} registros órfãos removidos.`, 'success');
+                    this.loadAllData();
+                } else {
+                    this.showAlert('✅ Banco de dados já está limpo e otimizado.', 'info');
+                }
+            });
+        }
+
+
+
+        // Reports
+        const reportBtn = document.getElementById('generateReportBtn');
+        if (reportBtn) {
+            reportBtn.addEventListener('click', () => {
+                console.log('📄 Gerando relatório...');
+                this.generateTransparencyReport();
+            });
+        }
+    }
+
+    setupTiebreakers() {
+        this.renderTiebreakers();
+
+        const saveBtn = document.getElementById('saveTiebreakersBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveTiebreakers());
+        }
+    }
+
+    renderTiebreakers() {
+        const categories = this.storage.getCategories();
+        const settings = this.storage.getSettings();
+        const container = document.getElementById('tiebreakerContainer');
+
+        if (!container) return;
+
+        if (categories.length === 0) {
+            container.innerHTML = '<p class="text-muted text-sm">Cadastre quesitos primeiro</p>';
+            return;
+        }
+
+        const tiebreakers = settings.tiebreakers || [];
+
+        // Mapear categorias com suas prioridades atuais
+        const categoriesWithPriority = categories.map((cat, index) => {
+            const tiebreaker = tiebreakers.find(t => t.categoryId === cat.id);
+            // Se já tem prioridade, usa. Se não, usa ordem padrão + 100 para ficar no fim
+            const priority = tiebreaker ? tiebreaker.priority : (100 + index);
+            return { ...cat, priority };
+        });
+
+        // Ordenar por prioridade para exibição
+        categoriesWithPriority.sort((a, b) => a.priority - b.priority);
+
+        container.innerHTML = `
+            <div class="flex flex-col gap-sm">
+                ${categoriesWithPriority.map((cat) => `
+                    <div class="flex items-center gap-md slide-in-up">
+                        <div class="flex flex-col items-center">
+                            <span class="text-xs text-muted mb-xs">Ordem</span>
+                            <input type="number" 
+                                   class="input text-center" 
+                                   style="width: 60px;" 
+                                   data-category-id="${cat.id}"
+                                   value="${cat.priority}"
+                                   min="1"
+                                   placeholder="Ordem">
+                        </div>
+                        <div class="flex-1 font-medium text-lg">
+                            ${this.escapeHtml(cat.name)}
+                        </div>
+                    </div>
+                `).join('')
+            }
+            </div>
+            <div class="mt-md p-sm bg-light rounded-md border border-light">
+                <p class="text-sm text-muted">💡 Defina a ordem de 1 a N. Menor número = maior prioridade no desempate.</p>
+            </div>
+        `;
+    }
+
+    saveTiebreakers() {
+        const inputs = document.querySelectorAll('#tiebreakerContainer input[data-category-id]');
+        const tiebreakers = [];
+
+        inputs.forEach(input => {
+            const categoryId = input.dataset.categoryId;
+            const priority = parseInt(input.value) || 999;
+
+            tiebreakers.push({ categoryId, priority });
+        });
+
+        this.storage.updateSettings({ tiebreakers });
+        this.showAlert('✅ Critérios de desempate salvos!', 'success');
+    }
+
+    /* ===== VALIDAÇÕES ===== */
+
+    async validateImage(file) {
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const maxSize = 5 * 1024 * 1024; // 5MB
+
+        if (!validTypes.includes(file.type)) {
+            return {
+                valid: false,
+                error: 'Formato inválido. Use JPG, PNG, GIF ou WEBP'
+            };
+        }
+
+        if (file.size > maxSize) {
+            return {
+                valid: false,
+                error: 'Arquivo muito grande. Máximo de 5MB'
+            };
+        }
+
+        return { valid: true };
+    }
+
+    /* ===== UTILITÁRIOS ===== */
+
+    handleDataUpdate(dataType) {
+        // Recarregar apenas os dados afetados
+        switch (dataType) {
+            case 'schools':
+                this.renderSchools();
+                break;
+            case 'judges':
+                this.renderJudges();
+                this.renderJudgeCategoryCheckboxes();
+                break;
+            case 'categories':
+                this.renderCategories();
+                this.renderJudgeCategoryCheckboxes();
+                this.populateCategorySelects();
+                break;
+            case 'scores':
+                // Recarregar grid se estiver na aba de lançamentos
+                if (this.currentTab === 'scores') {
+                    const categorySelect = document.getElementById('scoreCategorySelect');
+                    if (categorySelect && categorySelect.value) {
+                        this.loadScoresGrid(categorySelect.value);
+                    }
+                }
+                break;
+            case 'displayControl':
+                this.loadDisplayControlState();
+                break;
+            case 'settings':
+                this.renderStats();
+                this.renderTiebreakers();
+                break;
+            case 'all':
+                this.loadAllData();
+                break;
+        }
+    }
+
+    loadAllData() {
+        this.renderSchools();
+        this.renderJudges();
+        this.renderCategories();
+        this.renderJudgeCategoryCheckboxes();
+        this.populateCategorySelects();
+        this.renderStats();
+    }
+
+    loadTabData(tabName) {
+        switch (tabName) {
+            case 'schools':
+                this.renderSchools();
+                break;
+            case 'judges':
+                this.renderJudges();
+                this.renderJudgeCategoryCheckboxes();
+                break;
+            case 'categories':
+                this.renderCategories();
+                break;
+            case 'scores':
+                this.populateCategorySelects();
+                break;
+            case 'display':
+                this.loadDisplayControlState();
+                this.populateCategorySelects();
+                break;
+            case 'settings':
+                this.renderStats();
+                break;
+        }
+    }
+
+    renderStats() {
+        const schools = this.storage.getSchools();
+        const judges = this.storage.getJudges();
+        const categories = this.storage.getCategories();
+        const scores = this.storage.getScores();
+
+        const statsContainer = document.getElementById('statsContainer');
+        if (statsContainer) {
+            statsContainer.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value">${schools.length}</div>
+                    <div class="label">Agremiações</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${judges.length}</div>
+                    <div class="label">Jurados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${categories.length}</div>
+                    <div class="label">Quesitos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">${scores.length}</div>
+                    <div class="label">Notas Lançadas</div>
+                </div>
+            </div>
+            `;
+        }
+    }
+
+    setButtonLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            button.dataset.originalText = button.textContent;
+            button.innerHTML = '<span class="loading"></span> Salvando...';
+        } else {
+            button.disabled = false;
+            button.textContent = button.dataset.originalText || 'Salvar';
+        }
+    }
+
+    showAlert(message, type = 'info') {
+        const container = document.getElementById('alertContainer');
+        if (!container) return;
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert - ${type} slide -in -down`;
+        alert.textContent = message;
+
+        container.appendChild(alert);
+
+        // Auto remove após 5 segundos
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-20px)';
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    }
+
+    updateFileLabel(inputId, text) {
+        const label = document.querySelector(`label[for="${inputId}"] .file-upload-text`);
+        if (label) {
+            label.textContent = text;
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatDate(isoString) {
+        if (!isoString) return 'N/A';
+        const date = new Date(isoString);
+        return date.toLocaleDateString('pt-BR');
+    }
+
+    generateTransparencyReport() {
+        const schools = this.storage.getSchools();
+        const categories = this.storage.getCategories().sort((a, b) => a.order - b.order);
+        const judges = this.storage.getJudges();
+
+        // Calcular totais e organizar dados
+        const schoolsData = schools.map(school => {
+            const schoolScores = this.storage.getScoresBySchool(school.id);
+            const categoryDetails = categories.map(cat => {
+                const catScores = schoolScores.filter(s => s.categoryId === cat.id);
+                // Filtrar apenas notas existentes e válidas
+                const validScores = catScores.map(s => s.score).filter(s => s !== null && s !== undefined);
+                const sum = validScores.reduce((acc, curr) => acc + curr, 0);
+
+                return {
+                    name: cat.name,
+                    scores: validScores, // Array de notas para listar
+                    sum: sum
+                };
+            });
+
+            const totalScore = categoryDetails.reduce((acc, cat) => acc + cat.sum, 0);
+            const penalty = school.penalty ? parseFloat(school.penalty) : 0;
+            const finalTotal = totalScore - penalty;
+
+            return {
+                name: school.name,
+                categoryDetails,
+                totalScore,
+                penalty,
+                finalTotal
+            };
+        }).sort((a, b) => b.finalTotal - a.finalTotal); // Ranking
+
+        // Gerar HTML
+        let html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Relatório de Apuração</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+                    h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+                    .date { color: #666; font-size: 14px; margin-top: 5px; }
+                    
+                    .school-section { margin-bottom: 40px; page-break-inside: avoid; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+                    .school-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+                    .school-rank { font-size: 14px; font-weight: bold; color: #666; }
+                    .school-name { font-size: 20px; font-weight: bold; color: #000; }
+                    .school-total { font-size: 18px; font-weight: bold; color: #2c3e50; }
+                    
+                    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+                    th { font-weight: 600; color: #555; background: #f9f9f9; }
+                    .scores-col { font-family: 'Consolas', monospace; color: #444; }
+                    .sum-col { font-weight: bold; text-align: right; width: 60px; }
+                    
+                    .summary { margin-top: 15px; text-align: right; font-size: 14px; }
+                    .summary-row { margin-bottom: 4px; }
+                    .penalty { color: #d32f2f; }
+                    .final-row { font-size: 16px; font-weight: bold; margin-top: 8px; border-top: 1px solid #ddd; padding-top: 8px; }
+
+                    @media print {
+                        body { padding: 0; max-width: 100%; }
+                        .school-section { border: none; border-bottom: 1px solid #000; border-radius: 0; break-inside: avoid; }
+                        .no-print { display: none; }
+                        @page { size: A4 portrait; margin: 15mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Relatório de Apuração</h1>
+                    <div class="date">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+                </div>
+
+                <button onclick="window.print()" class="no-print" style="padding: 10px 20px; margin-bottom: 20px; cursor: pointer;">🖨️ Imprimir</button>
+        `;
+
+        schoolsData.forEach((school, index) => {
+            html += `
+                <div class="school-section">
+                    <div class="school-header">
+                        <div>
+                            <span class="school-rank">${index + 1}º Lugar</span><br>
+                            <span class="school-name">${this.escapeHtml(school.name)}</span>
+                        </div>
+                        <div class="school-total">${school.finalTotal.toFixed(1)}</div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quesito</th>
+                                <th>Notas Atribuídas</th>
+                                <th style="text-align:right">Soma</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            school.categoryDetails.forEach(cat => {
+                const scoresStr = cat.scores.length > 0 ? cat.scores.map(s => s.toFixed(1)).join(' | ') : '-';
+                html += `
+                    <tr>
+                        <td>${this.escapeHtml(cat.name)}</td>
+                        <td class="scores-col">${scoresStr}</td>
+                        <td class="sum-col">${cat.sum.toFixed(1)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+
+                    <div class="summary">
+                        <div class="summary-row">Subtotal: ${school.totalScore.toFixed(1)}</div>
+                        ${school.penalty > 0 ? `<div class="summary-row penalty">Penalidades: -${school.penalty.toFixed(1)}</div>` : ''}
+                        <div class="final-row">Total Final: ${school.finalTotal.toFixed(1)}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</body></html>`;
+
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+
+        // Auto-print
+        win.onload = function () {
+            setTimeout(() => win.print(), 500);
+        };
+    }
+
+} // Fim da classe AdminPanel
+
+// Inicializar quando o DOM estiver pronto
+let adminPanel;
+document.addEventListener('DOMContentLoaded', () => {
+    adminPanel = new AdminPanel();
+    window.adminPanel = adminPanel;
+});

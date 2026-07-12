@@ -1,0 +1,24 @@
+# IA Agents & Tools
+.agents/
+.agent/
+.gemini/
+
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Local data and uploads (if you want to keep them local)
+# uploads/
+# data.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

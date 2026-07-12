@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAMBA - Display Público</title>
+    <link rel="icon" type="image/png" href="assets/icone.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Inter+Tight:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/display.css">
+</head>
+
+<body>
+    <header class="display-header">
+        <div class="header-content">
+            <h1 class="event-title">Apuração do Desfile das Escolas de Samba do Carnaval</h1>
+            <div class="header-logos-row">
+                <img id="headerLogoCenter" class="header-logo" src="" alt="" style="display: none;">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Display -->
+    <main class="display-main">
+        <!-- TÍTULO DA VIEW ATUAL -->
+        <h1 class="view-title" id="viewTitle">CLASSIFICAÇÃO GERAL</h1>
+
+        <!-- VIEW: TRANSIÇÃO -->
+        <div class="transition-view hidden" id="transitionView">
+            <div class="transition-content">
+                <h1 class="transition-title">APURAÇÃO DO DESFILE DAS ESCOLAS DE SAMBA DO CARNAVAL 2026</h1>
+                <div class="transition-logos">
+                    <img id="transLogoCenter" class="transition-logo center" src="" alt="">
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: CATEGORY (QUESITO) -->
+        <div id="categoryView" class="category-view">
+            <div id="schoolCard" class="school-card"></div>
+        </div>
+
+        <!-- Vista de Ranking -->
+        <div id="rankingView" class="ranking-view hidden">
+            <div id="rankingGrid" class="ranking-grid"></div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/display.js"></script>
+</body>
+
+</html>

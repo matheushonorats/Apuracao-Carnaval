@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Usuário - SSAMBA</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #fff;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 3rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #455a64;
+            margin-top: 2rem;
+        }
+
+        p,
+        li {
+            font-size: 1.1rem;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 1.5rem 0;
+            display: block;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        blockquote {
+            background: #f0f7ff;
+            border-left: 5px solid #007bff;
+            margin: 2rem 0;
+            padding: 1rem;
+            font-style: italic;
+        }
+
+        @media print {
+            body {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+
+            h2 {
+                page-break-before: always;
+            }
+
+            h2:first-of-type {
+                page-break-before: avoid;
+            }
+
+            img {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                max-height: 500px;
+                /* Evita que imagens ocupem página inteira se não precisa */
+                object-fit: contain;
+            }
+
+            blockquote {
+                border-left-color: #000;
+                background: #f9f9f9;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🎭 SSAMBA - Manual do Usuário</h1>
+
+    <p>Bem-vindo ao <strong>SSAMBA</strong>, o sistema profissional de apuração de notas para escolas de samba. Este
+        manual foi desenhado para guiar você passo a passo, desde a configuração inicial até a impressão do relatório
+        final.</p>
+
+    <h2>🚀 1. Iniciando o Sistema</h2>
+    <p>Antes de tudo, certifique-se de que o servidor está rodando.</p>
+    <ol>
+        <li>Dê dois cliques no arquivo <code>iniciar_servidor.bat</code> na Área de Trabalho.</li>
+        <li>Uma janela preta irá abrir. <strong>Não feche essa janela</strong>, ela é o coração do sistema.</li>
+        <li>O painel abrirá automaticamente no seu navegador. Se não abrir, digite: <code>http://localhost:3000</code>
+        </li>
+    </ol>
+
+    <h2>🔌 2. Conectando o Telão (Importante!)</h2>
+    <p>Você tem duas formas de usar o sistema: <strong>Local (Cabo)</strong> ou <strong>Remoto (Wi-Fi)</strong>.</p>
+
+    <h3>Opção A: Cabo HDMI (Recomendado)</h3>
+    <p>A forma mais simples e segura.</p>
+    <ol>
+        <li>Conecte o notebook à TV/Projetor com um cabo HDMI.</li>
+        <li>No Windows, aperte <code>Teclado do Windows + P</code> e escolha <strong>Estender</strong>.</li>
+        <li>No painel de Lançamentos, clique em <strong>🖥️ Abrir Telão</strong>.</li>
+        <li>Uma nova janela abrirá. Arraste-a para a tela da TV e aperte <code>F11</code> para ficar em tela cheia.</li>
+    </ol>
+
+    <h3>Opção B: Via Rede (Wi-Fi)</h3>
+    <p>Se a TV for Smart e estiver <strong>na mesma rede Wi-Fi</strong> que o notebook:</p>
+    <ol>
+        <li>Olhe para a <strong>janela preta do servidor</strong> (aquela que abriu no início).</li>
+        <li>Lá vai aparecer algo como: <code>📡 Acesso na Rede: http://192.168.0.15:3000</code>.</li>
+        <li>Abra o navegador da TV e digite esse endereço exatamente igual.</li>
+    </ol>
+    <p><em>Nota: O computador e a TV DEVEM estar conectados no mesmo roteador.</em></p>
+
+    <h2>🛠️ 3. Configuração Inicial (Preparação)</h2>
+    <p>Siga esta ordem exata para configurar o evento.</p>
+
+    <h3>Passo 1: Cadastrar Quesitos</h3>
+    <p>Vá até a aba <strong>📋 Quesitos</strong>. Aqui você define o que será julgado (ex: Bateria, Harmonia) e a ordem
+        de leitura.</p>
+    <img src="assets/manual/admin_categories.png" alt="Tela de Quesitos">
+    <ol>
+        <li>Preencha o <strong>Nome do Quesito</strong>.</li>
+        <li>Defina a <strong>Ordem</strong> (1, 2, 3...).</li>
+        <li>Clique em <strong>Adicionar</strong>.</li>
+    </ol>
+    <p><em>Dica: A ordem define a sequência de leitura das notas.</em></p>
+
+    <h3>Passo 2: Cadastrar Jurados</h3>
+    <p>Vá até a aba <strong>👨‍⚖️ Jurados</strong>.</p>
+    <img src="assets/manual/admin_judges.png" alt="Tela de Jurados">
+    <ol>
+        <li>Insira o <strong>Nome do Jurado</strong>.</li>
+        <li>(Opcional) Selecione quais Quesitos ele julga. Se deixar vazio, ele julgará todos.</li>
+        <li>Clique em <strong>Adicionar</strong>.</li>
+    </ol>
+
+    <h3>Passo 3: Cadastrar Agremiações</h3>
+    <p>Vá até a aba <strong>🏫 Agremiações</strong>.</p>
+    <img src="assets/manual/admin_schools.png" alt="Tela de Agremiações">
+    <ol>
+        <li>Coloque o <strong>Nome da Escola</strong>.</li>
+        <li>(Recomendado) Escolha o <strong>Logo/Brasão</strong> da escola.</li>
+        <li>Se houver punição inicial, insira em <strong>Penalidade</strong>.</li>
+        <li>Clique em <strong>Adicionar</strong>.</li>
+    </ol>
+
+    <h2>🖥️ 4. Operação (Durante a Apuração)</h2>
+    <p>Esta é a tela que você usará durante todo o evento. Vá para a aba <strong>✍️ Lançamentos</strong>.</p>
+    <img src="assets/manual/admin_scores.png" alt="Tela de Lançamentos">
+
+    <h3>O Painel de Controle</h3>
+    <p>No topo da tela de Lançamentos, você tem o controle total:</p>
+    <ul>
+        <li><strong>Selecione o Quesito:</strong> Escolha qual quesito está sendo lido agora. A tabela abaixo muda
+            automaticamente.</li>
+        <li><strong>Botões de Visualização (O que aparece no telão):</strong>
+            <ul>
+                <li><code>📋 Quesito</code>: Mostra as notas do quesito atual (Use durante a leitura).</li>
+                <li><code>🔢 Class. Geral</code>: Mostra o ranking atualizado (Use nos intervalos).</li>
+                <li><code>🖼️ Tela de espera</code>: Mostra o logo do evento (Use antes de começar ou no final).</li>
+            </ul>
+        </li>
+        <li><strong>🖥️ Abrir Telão:</strong> Clique aqui para abrir a janela do projetor. Arraste essa janela para o
+            telão/TV externa.</li>
+    </ul>
+
+    <h3>Lançando Notas</h3>
+    <ol>
+        <li>Na tabela, localize a escola (linha) e o jurado (coluna).</li>
+        <li>Digite a nota (ex: <code>9.8</code>, <code>10</code>). O sistema aceita ponto ou vírgula.</li>
+        <li><strong>Aperte ENTER</strong> ou clique fora. A nota fica verde (salva).</li>
+        <li>Se errar, basta clicar e digitar novamente.</li>
+    </ol>
+    <p><em>Nota: O sistema calcula automaticamente o "Parcial" (soma do quesito) e o "Total" (soma geral).</em></p>
+
+    <h2>📺 5. O Telão Público</h2>
+    <p>O público verá uma interface limpa e animada.</p>
+    <img src="assets/manual/public_display.png" alt="Telão Público">
+    <ul>
+        <li><strong>Animações:</strong> Quando você muda/salva uma nota, ela pisca no telão.</li>
+        <li><strong>Líder:</strong> A escola que estiver em 1º lugar fica destacada (piscando) na virada de notas.</li>
+        <li><strong>Personalização:</strong> Na aba <strong>⚙️ Configurações</strong>, você pode mudar o Logo e o Fundo
+            do telão.</li>
+    </ul>
+
+    <h2>📊 6. Relatórios e Finalização</h2>
+    <p>Ao terminar a apuração:</p>
+    <ol>
+        <li>Vá em <strong>⚙️ Configurações</strong>.</li>
+        <li>Clique em <strong>📄 Gerar Relatório de Transparência</strong>.</li>
+        <li>Uma versão pronta para impressão abrirá, com todas as notas detalhadas e assinaturas.</li>
+        <li>Use <code>Ctrl + P</code> para salvar como PDF ou imprimir.</li>
+    </ol>
+    <img src="assets/manual/admin_settings.png" alt="Tela de Configurações">
+
+    <h2>❓ 7. Problemas Comuns e Soluções</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Problema</th>
+                <th>Possível Causa</th>
+                <th>Solução</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>TV não conecta no servidor</strong></td>
+                <td>Firewalls ou redes diferentes.</td>
+                <td>Certifique-se que o PC e a TV estão no <strong>mesmo Wi-Fi</strong>. Se não funcionar, use o
+                    <strong>Cabo HDMI</strong> (Opção A).</td>
+            </tr>
+            <tr>
+                <td><strong>Endereço da rede não aparece</strong></td>
+                <td>Servidor antigo ou erro.</td>
+                <td>Abra o <code>iniciar_servidor.bat</code> novamente e procure por <code>Acesso na Rede</code>.</td>
+            </tr>
+            <tr>
+                <td><strong>Telão não abre</strong></td>
+                <td>Bloqueador de pop-ups do navegador.</td>
+                <td>Olhe na barra de endereço (ícone de x) e permita pop-ups para este site.</td>
+            </tr>
+            <tr>
+                <td><strong>Nota errada lançada</strong></td>
+                <td>Erro de digitação.</td>
+                <td>Volte na célula errada, digite a nova nota e dê ENTER. O sistema corrige automaticamente.</td>
+            </tr>
+            <tr>
+                <td><strong>Sistema travou</strong></td>
+                <td>Servidor fechado ou internet.</td>
+                <td>Verifique se a janela preta do servidor está aberta. Se fechou, abra o
+                    <code>iniciar_servidor.bat</code> de novo. Recarregue a página (F5). <strong>Os dados NÃO serão
+                        perdidos.</strong></td>
+            </tr>
+            <tr>
+                <td><strong>Imagem não carrega</strong></td>
+                <td>Imagem muito pesada ou formato inválido.</td>
+                <td>Use imagens JPG ou PNG, de preferência leves (menos de 2MB).</td>
+            </tr>
+            <tr>
+                <td><strong>Contraste ruim no telão</strong></td>
+                <td>Imagem de fundo muito clara.</td>
+                <td>Em Configurações, troque o fundo por uma imagem mais escura para as letras brancas aparecerem bem.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Empate no final</strong></td>
+                <td>Critérios não definidos.</td>
+                <td>Em Configurações > Critérios de Desempate, arraste os quesitos para definir a ordem de prioridade.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <blockquote>
+        <strong>Dica de Ouro:</strong> Teste a conexão com a TV <strong>antes</strong> do evento começar. Se usar Wi-Fi,
+        cuidado com oscilações. Cabo HDMI é sempre mais seguro!
+    </blockquote>
+
+    <p style="text-align: center; margin-top: 3rem; font-size: 1.2rem;"><strong>Bom trabalho e bom carnaval! 🎉</strong>
+    </p>
+
+</body>
+
+</html>
