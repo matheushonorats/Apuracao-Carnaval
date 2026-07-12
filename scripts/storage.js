@@ -759,27 +759,22 @@ class StorageManager {
      * Limpa todos os dados
      */
     clearAllData() {
-        if (confirm('⚠️ ATENÇÃO: Isso vai apagar TODOS os dados (Escolas, Quesitos e Notas). Tem certeza?')) {
-            localStorage.removeItem(this.STORAGE_KEY);
-            this.initializeData();
-            this.notifyChange('all');
-            return true;
-        }
-        return false;
+        localStorage.removeItem(this.STORAGE_KEY);
+        this.initializeData();
+        this.notifyChange('all');
+        return true;
     }
 
     /**
      * Limpa apenas as notas (preserva cadastros)
      */
     clearScoresOnly() {
-        if (confirm('⚠️ ATENÇÃO: Isso vai apagar TODAS as notas lançadas.\n\n- Escolas e Quesitos SERÃO MANTIDOS.\n- Apenas as notas votadas serão zeradas.\n\nTem certeza?')) {
-            const data = this.getData();
-            if (data) {
-                data.scores = [];
-                this.saveData(data);
-                this.notifyChange('all');
-                return true;
-            }
+        const data = this.getData();
+        if (data) {
+            data.scores = [];
+            this.saveData(data);
+            this.notifyChange('all');
+            return true;
         }
         return false;
     }

@@ -44,6 +44,9 @@ class AdminPanel {
             try { this.setupMediaHandlers(); } catch (e) { console.error('setupMediaHandlers retry:', e); }
         }, 1500);
 
+        try { this.setupDashboardControls(); } catch (e) { console.error('setupDashboardControls:', e); }
+        try { this.setupSearchInput(); } catch (e) { console.error('setupSearchInput:', e); }
+
         console.log('✅ AdminPanel inicializado com sucesso');
     }
 
@@ -136,8 +139,9 @@ class AdminPanel {
         `;
     }
 
-    removeImage(storageKey, inputId) {
-        if (confirm('Remover esta imagem?')) {
+    async removeImage(storageKey, inputId) {
+        const confirmed = await this.showConfirm('Remover Imagem', 'Você deseja realmente remover esta imagem?');
+        if (confirmed) {
             const update = {};
             update[storageKey] = null;
             this.storage.updateSettings(update);
@@ -432,7 +436,7 @@ class AdminPanel {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    deleteSchool(id) {
+    async deleteSchool(id) {
         const school = this.storage.getSchools().find(s => s.id === id);
         if (!school) return;
 
@@ -440,11 +444,11 @@ class AdminPanel {
         const hasScores = scores.length > 0;
 
         const confirmMsg = hasScores
-            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${school.name}" ?\n\n` +
-            `Todas as ${scores.length} nota(s) desta escola serão PERDIDAS permanentemente!`
-            : `Confirma a exclusão de "${school.name}" ? `;
+            ? `Tem certeza que deseja excluir "${school.name}"?\n\nTodas as ${scores.length} nota(s) desta escola serão PERDIDAS permanentemente!`
+            : `Confirma a exclusão de "${school.name}"?`;
 
-        if (confirm(confirmMsg)) {
+        const confirmed = await this.showConfirm('⚠️ Excluir Agremiação', confirmMsg);
+        if (confirmed) {
             try {
                 this.storage.deleteSchool(id);
                 this.showAlert('✅ Agremiação excluída com sucesso', 'success');
@@ -575,7 +579,7 @@ class AdminPanel {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    deleteJudge(id) {
+    async deleteJudge(id) {
         const judge = this.storage.getJudges().find(j => j.id === id);
         if (!judge) return;
 
@@ -583,11 +587,11 @@ class AdminPanel {
         const hasScores = scores.length > 0;
 
         const confirmMsg = hasScores
-            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${judge.name}" ?\n\n` +
-            `Todas as ${scores.length} nota(s) deste jurado serão PERDIDAS!`
-            : `Confirma a exclusão de "${judge.name}" ? `;
+            ? `Tem certeza que deseja excluir "${judge.name}"?\n\nTodas as ${scores.length} nota(s) deste jurado serão PERDIDAS!`
+            : `Confirma a exclusão de "${judge.name}"?`;
 
-        if (confirm(confirmMsg)) {
+        const confirmed = await this.showConfirm('⚠️ Excluir Jurado', confirmMsg);
+        if (confirmed) {
             try {
                 this.storage.deleteJudge(id);
                 this.showAlert('✅ Jurado excluído com sucesso', 'success');
@@ -737,7 +741,7 @@ class AdminPanel {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    deleteCategory(id) {
+    async deleteCategory(id) {
         const category = this.storage.getCategories().find(c => c.id === id);
         if (!category) return;
 
@@ -745,11 +749,11 @@ class AdminPanel {
         const hasScores = scores.length > 0;
 
         const confirmMsg = hasScores
-            ? `⚠️ ATENÇÃO: Tem certeza que deseja excluir "${category.name}" ?\n\n` +
-            `Todas as ${scores.length} nota(s) deste quesito serão PERDIDAS!`
-            : `Confirma a exclusão de "${category.name}" ? `;
+            ? `Tem certeza que deseja excluir "${category.name}"?\n\nTodas as ${scores.length} nota(s) deste quesito serão PERDIDAS!`
+            : `Confirma a exclusão de "${category.name}"?`;
 
-        if (confirm(confirmMsg)) {
+        const confirmed = await this.showConfirm('⚠️ Excluir Quesito', confirmMsg);
+        if (confirmed) {
             try {
                 this.storage.deleteCategory(id);
                 this.showAlert('✅ Quesito excluído com sucesso', 'success');
@@ -861,8 +865,8 @@ class AdminPanel {
             // Calcular total GERAL (todas as notas)
             const schoolGrandTotal = this.storage.getSchoolTotal(school.id);
 
-            html += `<td class="text-center" style="background-color: #1e293b; color: #fff;"><strong>${schoolTotal.toFixed(1)}</strong></td>`;
-            html += `<td class="text-center" style="background-color: #0f172a; color: #fff; border-left: 1px solid #334155;"><strong>${schoolGrandTotal.toFixed(1)}</strong></td>`;
+            html += `<td class="text-center partial-total-cell" data-school="${school.id}" style="background-color: #1e293b; color: #fff;"><strong>${schoolTotal.toFixed(1)}</strong></td>`;
+            html += `<td class="text-center grand-total-cell" data-school="${school.id}" style="background-color: #0f172a; color: #fff; border-left: 1px solid #334155;"><strong>${schoolGrandTotal.toFixed(1)}</strong></td>`;
 
             html += `</tr>`;
         });
@@ -875,11 +879,79 @@ class AdminPanel {
 
         document.getElementById('scoresGridContainer').innerHTML = html;
 
+        // Renderizar progresso de notas do quesito
+        const progressWrapper = document.getElementById('scoreCategoryProgressWrapper');
+        const progressText = document.getElementById('scoreCategoryProgressText');
+        const progressBar = document.getElementById('scoreCategoryProgressBar');
+
+        if (progressWrapper && progressText && progressBar) {
+            const totalExpected = schools.length * relevantJudges.length;
+            const validScoresCount = existingScores.filter(s => s.score !== null && s.score !== undefined).length;
+            const percentage = totalExpected > 0 ? (validScoresCount / totalExpected) * 100 : 0;
+
+            progressText.textContent = `${validScoresCount}/${totalExpected}`;
+            progressBar.style.width = `${percentage}%`;
+            progressWrapper.classList.remove('hidden');
+        }
+
         // Adicionar listeners para Enter, Focus e Blur
         const inputs = document.querySelectorAll('#scoresGridContainer input[type="number"]');
         const table = document.querySelector('#scoresGridContainer table');
 
         inputs.forEach((input, index) => {
+            // Recalculo em tempo real (input event)
+            input.addEventListener('input', () => {
+                const schoolId = input.dataset.school;
+                
+                // Validação rápida de limite e casas decimais
+                let value = input.value.trim();
+                if (value !== '') {
+                    let numValue = parseFloat(value);
+                    if (numValue < 0) input.value = '0';
+                    if (numValue > 10) input.value = '10';
+                    
+                    // Se tiver mais de 2 casas decimais, arredondar no input
+                    if (value.includes('.') && value.split('.')[1].length > 2) {
+                        input.value = numValue.toFixed(2);
+                    }
+                }
+                
+                // Recalcular soma parcial
+                const schoolInputs = document.querySelectorAll(`#scoresGridContainer input[data-school="${schoolId}"]`);
+                let partialSum = 0;
+                schoolInputs.forEach(si => {
+                    const val = parseFloat(si.value);
+                    if (!isNaN(val) && val >= 0 && val <= 10) {
+                        partialSum += val;
+                    }
+                });
+                
+                // Atualizar célula parcial
+                const tr = input.closest('tr');
+                if (tr) {
+                    const partialCell = tr.querySelector('.partial-total-cell');
+                    if (partialCell) {
+                        partialCell.innerHTML = `<strong>${partialSum.toFixed(1)}</strong>`;
+                    }
+                }
+                
+                // Recalcular geral
+                const allScores = this.storage.getScoresBySchool(schoolId);
+                const otherScoresSum = allScores
+                    .filter(s => s.categoryId !== categoryId)
+                    .reduce((sum, s) => sum + s.score, 0);
+                
+                const schoolObj = this.storage.getSchools().find(s => s.id === schoolId);
+                const penalty = schoolObj && schoolObj.penalty ? parseFloat(schoolObj.penalty) : 0;
+                
+                const grandTotal = otherScoresSum + partialSum - penalty;
+                if (tr) {
+                    const grandCell = tr.querySelector('.grand-total-cell');
+                    if (grandCell) {
+                        grandCell.innerHTML = `<strong>${grandTotal.toFixed(1)}</strong>`;
+                    }
+                }
+            });
             // ENTER: Navegação e Salvar com Feedback
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -1154,12 +1226,18 @@ class AdminPanel {
 
         // Clear
         const clearBtn = document.getElementById('clearDataBtn');
-        clearBtn.addEventListener('click', () => {
-            // ALTERADO: Limpar APENAS NOTAS, mantendo cadastros
-            if (this.storage.clearScoresOnly()) {
-                this.showAlert('✅ Notas zeradas com sucesso (Cadastros mantidos)', 'success');
-            }
-        });
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async () => {
+                const confirmed = await this.showConfirm(
+                    '🗑️ Zerar Notas',
+                    'Tem certeza que deseja apagar TODAS as notas lançadas?\n\n- Escolas, Jurados e Quesitos cadastrados serão MANTIDOS.\n- Apenas as notas registradas serão limpas.\n- Essa ação não pode ser desfeita.'
+                );
+                if (confirmed) {
+                    this.storage.clearScoresOnly();
+                    this.showAlert('✅ Notas zeradas com sucesso (Cadastros mantidos)', 'success');
+                }
+            });
+        }
 
         // Otimizar Banco
         const optimizeBtn = document.getElementById('optimizeDataBtn');
@@ -1289,6 +1367,9 @@ class AdminPanel {
     /* ===== UTILITÁRIOS ===== */
 
     handleDataUpdate(dataType) {
+        if (this.currentTab === 'dashboard') {
+            this.renderDashboard();
+        }
         // Recarregar apenas os dados afetados
         switch (dataType) {
             case 'schools':
@@ -1332,10 +1413,14 @@ class AdminPanel {
         this.renderJudgeCategoryCheckboxes();
         this.populateCategorySelects();
         this.renderStats();
+        this.renderDashboard();
     }
 
     loadTabData(tabName) {
         switch (tabName) {
+            case 'dashboard':
+                this.renderDashboard();
+                break;
             case 'schools':
                 this.renderSchools();
                 break;
@@ -1574,6 +1659,167 @@ class AdminPanel {
         win.onload = function () {
             setTimeout(() => win.print(), 500);
         };
+    }
+
+    showConfirm(title, message) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'custom-modal-backdrop fade-in';
+            modal.innerHTML = `
+                <div class="custom-modal scale-in">
+                    <div class="custom-modal-header">
+                        <h3>${title}</h3>
+                    </div>
+                    <div class="custom-modal-body">
+                        <p style="white-space: pre-line;">${message}</p>
+                    </div>
+                    <div class="custom-modal-footer">
+                        <button class="btn btn-secondary btn-cancel">Cancelar</button>
+                        <button class="btn btn-danger btn-confirm">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            const btnCancel = modal.querySelector('.btn-cancel');
+            const btnConfirm = modal.querySelector('.btn-confirm');
+            
+            const close = (result) => {
+                modal.classList.add('fade-out');
+                modal.querySelector('.custom-modal').classList.add('scale-out');
+                setTimeout(() => {
+                    modal.remove();
+                    resolve(result);
+                }, 300);
+            };
+            
+            btnCancel.addEventListener('click', () => close(false));
+            btnConfirm.addEventListener('click', () => close(true));
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) close(false);
+            });
+        });
+    }
+
+    setupDashboardControls() {
+        const dashOpenBtn = document.getElementById('dashboardOpenDisplayBtn');
+        if (dashOpenBtn) {
+            dashOpenBtn.addEventListener('click', () => {
+                window.open('display.html', 'SambaDisplay', 'width=1280,height=720');
+            });
+        }
+    }
+
+    setupSearchInput() {
+        const searchInput = document.getElementById('schoolSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const cards = document.querySelectorAll('#schoolsList .item-card');
+                cards.forEach(card => {
+                    const name = card.querySelector('.item-name').textContent.toLowerCase();
+                    if (name.includes(term)) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+            });
+        }
+    }
+
+    renderDashboard() {
+        const schools = this.storage.getSchools();
+        const judges = this.storage.getJudges();
+        const categories = this.storage.getCategories().sort((a, b) => a.order - b.order);
+        const scores = this.storage.getScores();
+        
+        // 1. Renderizar Stats rápidos
+        const statsContainer = document.getElementById('dashboardStatsContainer');
+        if (statsContainer) {
+            // Calcular progresso geral
+            let totalExpectedScores = 0;
+            categories.forEach(cat => {
+                const relevantJudges = judges.filter(j => 
+                    !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(cat.id)
+                );
+                totalExpectedScores += schools.length * relevantJudges.length;
+            });
+            
+            const validScoresCount = scores.filter(s => s.score !== null && s.score !== undefined).length;
+            const generalPercentage = totalExpectedScores > 0 ? (validScoresCount / totalExpectedScores) * 100 : 0;
+            
+            statsContainer.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value">${schools.length}</div>
+                        <div class="label">Agremiações</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">${judges.length}</div>
+                        <div class="label">Jurados</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">${categories.length}</div>
+                        <div class="label">Quesitos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">${generalPercentage.toFixed(0)}%</div>
+                        <div class="label">Progresso Geral (${validScoresCount}/${totalExpectedScores})</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 2. Renderizar Andamento por Quesito
+        const progressList = document.getElementById('dashboardCategoriesProgressList');
+        if (progressList) {
+            if (categories.length === 0) {
+                progressList.innerHTML = '<p class="text-muted text-sm">Nenhum quesito cadastrado.</p>';
+            } else {
+                progressList.innerHTML = categories.map(cat => {
+                    const relevantJudges = judges.filter(j => 
+                        !j.categoryIds || j.categoryIds.length === 0 || j.categoryIds.includes(cat.id)
+                    );
+                    const expected = schools.length * relevantJudges.length;
+                    const registered = scores.filter(s => s.categoryId === cat.id && s.score !== null && s.score !== undefined).length;
+                    const pct = expected > 0 ? (registered / expected) * 100 : 0;
+                    
+                    const isComplete = registered === expected && expected > 0;
+                    const statusBadge = isComplete 
+                        ? '<span class="badge badge-success">Concluído</span>' 
+                        : `<span class="badge badge-primary">${registered}/${expected} notas</span>`;
+                        
+                    return `
+                        <div style="background: rgba(255,255,255,0.02); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05);">
+                            <div class="flex justify-between items-center mb-xs" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                <span class="font-medium">${this.escapeHtml(cat.name)}</span>
+                                ${statusBadge}
+                            </div>
+                            <div class="progress-bar-bg" style="width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden;">
+                                <div class="progress-bar-fill" style="width: ${pct}%; height: 100%; background: ${isComplete ? 'var(--color-success)' : 'var(--gradient-primary)'}; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
+        // 3. Atualizar estado de exibição ativa no telão
+        const activeViewText = document.getElementById('dashboardActiveViewText');
+        if (activeViewText) {
+            const control = this.storage.getDisplayControl();
+            if (control.view === 'category') {
+                const activeCat = categories.find(c => c.id === control.currentCategoryId);
+                activeViewText.textContent = `Quesito: ${activeCat ? activeCat.name : 'Nenhum selecionado'}`;
+            } else if (control.view === 'ranking') {
+                activeViewText.textContent = 'Classificação Geral';
+            } else if (control.view === 'transition') {
+                activeViewText.textContent = 'Tela de Espera (Espera)';
+            }
+        }
     }
 
 } // Fim da classe AdminPanel
