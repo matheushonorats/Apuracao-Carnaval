@@ -824,6 +824,12 @@ class AdminPanel {
         // Obter notas existentes
         const existingScores = this.storage.getScoresByCategory(categoryId);
 
+        // Criar um mapa para busca O(1) de notas
+        const scoresMap = new Map();
+        existingScores.forEach(s => {
+            scoresMap.set(`${s.schoolId}_${s.judgeId}`, s);
+        });
+
         // Montar tabela
         let html = `
             <div class="scores-grid">
@@ -844,9 +850,7 @@ class AdminPanel {
             html += `<td>${this.escapeHtml(school.name)}</td>`;
 
             relevantJudges.forEach(judge => {
-                const score = existingScores.find(s =>
-                    s.schoolId === school.id && s.judgeId === judge.id
-                );
+                const score = scoresMap.get(`${school.id}_${judge.id}`);
                 const value = score ? score.score : '';
 
                 html += `
