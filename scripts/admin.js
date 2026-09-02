@@ -394,8 +394,8 @@ class AdminPanel {
 
         container.innerHTML = schools.map(school => `
             <div class="item-card slide-in-up">
-                <img src="${school.logoDataURL || 'assets/default-logo.png'}" 
-                     alt="${school.name}" 
+                <img src="${this.escapeAttribute(school.logoDataURL || 'assets/default-logo.png')}"
+                     alt="${this.escapeAttribute(school.name)}"
                      class="item-logo"
                      onerror="this.src='assets/default-logo.png'">
                 <div class="item-info">
@@ -1523,6 +1523,16 @@ class AdminPanel {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    escapeAttribute(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     formatDate(isoString) {
