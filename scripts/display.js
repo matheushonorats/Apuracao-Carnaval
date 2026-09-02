@@ -268,6 +268,28 @@ class DisplayController {
         const leaderId = schoolsWithTotal.length > 0 ? schoolsWithTotal[0].id : null;
 
 
+        // Otimização: Pré-computar dicionários para evitar complexidade O(N*M) nos loops
+        const allCategoryScores = this.storage.getScoresByCategory(category.id);
+        const allScoresRaw = this.storage.getScores();
+
+        // Criar dicionário de notas por escola e juiz para busca O(1)
+        const scoresBySchoolAndJudge = new Map();
+
+        allCategoryScores.forEach(s => {
+            const key = `${s.schoolId}_${s.judgeId}`;
+            scoresBySchoolAndJudge.set(key, s);
+        });
+
+        // Pré-calcular o total dos OUTROS quesitos por escola para busca O(1)
+        const otherScoresSumBySchool = new Map();
+
+        allScoresRaw.forEach(s => {
+            if (s.categoryId !== category.id) {
+                const currentSum = otherScoresSumBySchool.get(s.schoolId) || 0;
+                otherScoresSumBySchool.set(s.schoolId, currentSum + s.score);
+            }
+        });
+
         // Construir HTML da tabela
         const containerClass = animateView ? 'scores-table-container fade-in' : 'scores-table-container';
 
@@ -284,14 +306,13 @@ class DisplayController {
                     </thead>
                     <tbody>
                         ${schools.map((school, sIndex) => {
-            const scores = this.storage.getScoresByCategory(category.id).filter(s => s.schoolId === school.id);
             
             // Calcular totais parciais/gerais em tempo real baseando nas notas já reveladas
             let revealedScoresSum = 0;
             judges.forEach((judge, jIndex) => {
                 const isRevealed = !control.revelationActive || ((jIndex * schools.length + sIndex) < (control.revealedNotesCount || 0));
                 if (isRevealed) {
-                    const score = scores.find(s => s.judgeId === judge.id);
+                    const score = scoresBySchoolAndJudge.get(`${school.id}_${judge.id}`);
                     if (score) {
                         revealedScoresSum += score.score;
                     }
@@ -300,10 +321,7 @@ class DisplayController {
 
             const total = revealedScoresSum;
             
-            const allScores = this.storage.getScoresBySchool(school.id);
-            const otherScoresSum = allScores
-                .filter(s => s.categoryId !== category.id)
-                .reduce((sum, s) => sum + s.score, 0);
+            const otherScoresSum = otherScoresSumBySchool.get(school.id) || 0;
                 
             const penalty = school.penalty ? parseFloat(school.penalty) : 0;
             const grandTotal = otherScoresSum + total - penalty;
@@ -342,7 +360,7 @@ class DisplayController {
                                         <span>${this.escapeHtml(school.name)}</span>
                                     </td>
                                     ${judges.map((judge, jIndex) => {
-                const score = scores.find(s => s.judgeId === judge.id);
+                const score = scoresBySchoolAndJudge.get(`${school.id}_${judge.id}`);
                 
                 // Verificar se a nota está oculta pelo Modo Revelação sequencial (coluna por coluna)
                 const isRevealed = !control.revelationActive || ((jIndex * schools.length + sIndex) < (control.revealedNotesCount || 0));
@@ -395,10 +413,20 @@ class DisplayController {
 
         let shouldFlashLeader = false;
 
+        // Otimização: Pré-contar notas válidas por juiz nesta categoria para busca O(1)
+        const validScoresCountByJudge = new Map();
+        allCategoryScores.forEach(s => {
+            if (s.score !== null && s.score !== undefined) {
+                const count = validScoresCountByJudge.get(s.judgeId) || 0;
+                validScoresCountByJudge.set(s.judgeId, count + 1);
+            }
+        });
+
         judges.forEach((judge, jIndex) => {
             // Verificar se este juiz deu nota para TODAS as escolas nesta categoria (ou se foi revelada se em Modo Revelação)
+            const count = validScoresCountByJudge.get(judge.id) || 0;
             const isJudgeComplete = !control.revelationActive 
-                ? (this.storage.getScoresByCategory(category.id).filter(s => s.judgeId === judge.id && s.score !== null && s.score !== undefined).length === schools.length)
+                ? (count === schools.length)
                 : (control.revealedNotesCount >= (jIndex + 1) * schools.length);
 
             const judgeKey = `${category.id}_${judge.id}`;
