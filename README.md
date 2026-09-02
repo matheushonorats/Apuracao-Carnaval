@@ -72,7 +72,6 @@ Acesse no seu navegador: `http://localhost:8080`
 ## 📝 Anotações de Desenvolvimento & Roadmap
 
 ### Bugs Críticos Diagnosticados (Próximas Correções)
-- A função `handleUpdate` no `display.js` está declarada duas vezes (uma no topo e outra no rodapé do arquivo), o que anula o controle de throttle e provoca renderizações desnecessárias.
 - O polling padrão do display está rodando de forma excessiva a cada 200ms, causando uso elevado de CPU desnecessariamente; deve-se usar o BroadcastChannel como gatilho prioritário e aliviar o loop.
 - O controle de edição (`editingId`) é compartilhado globalmente entre abas de Escolas, Jurados e Quesitos no admin, podendo causar colisão se o usuário mudar de aba enquanto edita.
 
