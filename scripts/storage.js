@@ -333,11 +333,30 @@ class StorageManager {
             const body = JSON.stringify(data);
             this.lastServerHash = body; // Atualizar hash local para evitar re-processar meu próprio save
 
+            let token = localStorage.getItem('server_auth_token') || '';
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
             const response = await fetch(this.serverUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: body
             });
+
+            if (response.status === 401) {
+                this.isSaving = false;
+                const userInputToken = prompt("Acesso negado. Insira o token de administrador do servidor para salvar os dados:");
+                if (userInputToken !== null) {
+                    localStorage.setItem('server_auth_token', userInputToken.trim());
+                    // Retry save
+                    setTimeout(() => this.performSync(data), 100);
+                } else {
+                    console.warn("Salvamento cancelado: Token não fornecido.");
+                }
+                return;
+            }
 
             if (response.ok) {
                 // Verificar se o servidor retornou dados otimizados (URLs em vez de Base64)

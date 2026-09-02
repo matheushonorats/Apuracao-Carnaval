@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const PORT = 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -20,6 +21,18 @@ const mimeTypes = {
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon'
 };
+
+// Authentication Setup
+const TOKEN_FILE = path.join(__dirname, '.admin_token');
+let ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+if (!ADMIN_TOKEN) {
+    if (fs.existsSync(TOKEN_FILE)) {
+        ADMIN_TOKEN = fs.readFileSync(TOKEN_FILE, 'utf8').trim();
+    } else {
+        ADMIN_TOKEN = crypto.randomBytes(16).toString('hex');
+        fs.writeFileSync(TOKEN_FILE, ADMIN_TOKEN);
+    }
+}
 
 /**
  * Get local IP address to display to user
@@ -218,6 +231,15 @@ const server = http.createServer((req, res) => {
 
     // API: Save Data (UPDATE MEMORY + DISK)
     if (req.url === '/api/data' && req.method === 'POST') {
+        // Authentication Check
+        const authHeader = req.headers['authorization'];
+        if (!authHeader || authHeader !== `Bearer ${ADMIN_TOKEN}`) {
+            console.log(`\n🚫 [POST] Tentativa de salvamento negada (Token Inválido)`);
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized: Invalid or missing token' }));
+            return;
+        }
+
         const startTime = Date.now();
         const contentLength = req.headers['content-length'];
         console.log(`\n📥 [POST] Recebendo dados... Tamanho: ${(contentLength / 1024).toFixed(2)} KB`);
@@ -330,6 +352,7 @@ server.listen(PORT, () => {
     console.log(`✅ SSAMBA Server iniciado!`);
     console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
     console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
+    console.log(`🔑 Token de Admin: ${ADMIN_TOKEN} (necessário para salvar dados)`);
     console.log('---------------------------------------------------');
     // Open admin panel safely (optional, batch file does it)
 });
