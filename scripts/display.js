@@ -394,11 +394,12 @@ class DisplayController {
         // Ou seja, quando a coluna daquele jurado estiver completa.
 
         let shouldFlashLeader = false;
+        const categoryScores = !control.revelationActive ? this.storage.getScoresByCategory(category.id) : [];
 
         judges.forEach((judge, jIndex) => {
             // Verificar se este juiz deu nota para TODAS as escolas nesta categoria (ou se foi revelada se em Modo Revelação)
             const isJudgeComplete = !control.revelationActive 
-                ? (this.storage.getScoresByCategory(category.id).filter(s => s.judgeId === judge.id && s.score !== null && s.score !== undefined).length === schools.length)
+                ? (categoryScores.filter(s => s.judgeId === judge.id && s.score !== null && s.score !== undefined).length === schools.length)
                 : (control.revealedNotesCount >= (jIndex + 1) * schools.length);
 
             const judgeKey = `${category.id}_${judge.id}`;
