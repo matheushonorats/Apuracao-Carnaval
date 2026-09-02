@@ -80,9 +80,13 @@ function processImages(data) {
                     if (ext === 'jpeg') ext = 'jpg';
                     if (ext === 'svg+xml') ext = 'svg';
 
+                    // Sanitize inputs to prevent path traversal
+                    const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const safeExt = ext.replace(/[^a-zA-Z0-9]/g, '');
+
                     const buffer = Buffer.from(matches[2], 'base64');
                     // Filename: prefix + timestamp
-                    const fileName = `${prefix}_${Date.now()}.${ext}`;
+                    const fileName = `${safePrefix}_${Date.now()}.${safeExt}`;
                     const filePath = path.join(UPLOADS_DIR, fileName);
 
                     fs.writeFileSync(filePath, buffer);
