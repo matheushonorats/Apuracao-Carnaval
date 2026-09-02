@@ -158,7 +158,7 @@ class StorageManager {
             } catch (e) {
                 // Silencioso em caso de erro de rede momentâneo
             }
-        }, 300); // Poll a cada 300ms (Mais rápido)
+        }, 3000); // Polling de backup menos agressivo (3s)
     }
 
     startSSESync() {
