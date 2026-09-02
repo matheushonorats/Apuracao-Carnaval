@@ -335,8 +335,8 @@ class DisplayController {
             return `
                                 <tr>
                                     <td class="school-cell">
-                                        <img src="${school.logoDataURL || 'assets/default-logo.svg'}" 
-                                             alt="${school.name}" 
+                                        <img src="${this.escapeAttribute(school.logoDataURL || 'assets/default-logo.svg')}"
+                                             alt="${this.escapeAttribute(school.name)}"
                                              class="table-logo"
                                              onerror="this.src='assets/default-logo.svg'">
                                         <span>${this.escapeHtml(school.name)}</span>
@@ -569,8 +569,8 @@ class DisplayController {
             return `
                 <div class="ranking-item" style="${animStyle}">
                     <div class="position ${positionClass}">${medal || position + 'º'}</div>
-                    <img src="${school.logoDataURL || 'assets/default-logo.svg'}" 
-                         alt="${school.name}" 
+                    <img src="${this.escapeAttribute(school.logoDataURL || 'assets/default-logo.svg')}"
+                         alt="${this.escapeAttribute(school.name)}"
                          class="ranking-logo"
                          onerror="this.src='assets/default-logo.svg'">
                     <div class="ranking-school-name">${this.escapeHtml(school.name)}</div>
@@ -591,6 +591,16 @@ class DisplayController {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    escapeAttribute(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     // Removido handleUpdate duplicado que sobrescrevia a lógica correta
