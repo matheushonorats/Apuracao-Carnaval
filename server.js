@@ -324,12 +324,20 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
-    const ip = getLocalIP();
-    console.log('---------------------------------------------------');
-    console.log(`✅ SSAMBA Server iniciado!`);
-    console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
-    console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
-    console.log('---------------------------------------------------');
-    // Open admin panel safely (optional, batch file does it)
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        const ip = getLocalIP();
+        console.log('---------------------------------------------------');
+        console.log(`✅ SSAMBA Server iniciado!`);
+        console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
+        console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
+        console.log('---------------------------------------------------');
+        // Open admin panel safely (optional, batch file does it)
+    });
+}
+
+// Export for testing
+module.exports = {
+    getLocalIP,
+    server
+};
