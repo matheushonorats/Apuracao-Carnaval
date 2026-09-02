@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const PORT = process.env.PORT || 3000;
+const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 
 // Clientes SSE (Server-Sent Events) ativos
 const sseClients = new Set();
@@ -46,7 +46,7 @@ function getLocalIP() {
 }
 
 // Ensure uploads directory exists
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
     try {
         fs.mkdirSync(UPLOADS_DIR);
@@ -324,12 +324,16 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
-    const ip = getLocalIP();
-    console.log('---------------------------------------------------');
-    console.log(`✅ SSAMBA Server iniciado!`);
-    console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
-    console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
-    console.log('---------------------------------------------------');
-    // Open admin panel safely (optional, batch file does it)
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        const ip = getLocalIP();
+        console.log('---------------------------------------------------');
+        console.log(`✅ SSAMBA Server iniciado!`);
+        console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
+        console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
+        console.log('---------------------------------------------------');
+        // Open admin panel safely (optional, batch file does it)
+    });
+}
+
+module.exports = server;
