@@ -729,15 +729,53 @@ class StorageManager {
     getRanking() {
         const schools = this.getSchools();
         const settings = this.getSettings();
+        const categories = this.getCategories();
+        const scores = this.getScores();
 
-        const ranking = schools.map(school => ({
-            ...school,
-            total: this.getSchoolTotal(school.id),
-            categoryTotals: this.getCategories().reduce((acc, cat) => {
-                acc[cat.id] = this.getSchoolCategoryTotal(school.id, cat.id);
-                return acc;
-            }, {})
-        }));
+        // Pre-aggregate scores
+        const aggregatedTotals = new Map();
+        const aggregatedCategoryTotals = new Map();
+
+        // Initialize maps
+        for (const school of schools) {
+            const penalty = school.penalty ? parseFloat(school.penalty) : 0;
+            aggregatedTotals.set(school.id, -penalty);
+
+            const catMap = new Map();
+            for (const cat of categories) {
+                catMap.set(cat.id, 0);
+            }
+            aggregatedCategoryTotals.set(school.id, catMap);
+        }
+
+        // Single pass over scores
+        for (const s of scores) {
+            const currentTotal = aggregatedTotals.get(s.schoolId);
+            if (currentTotal !== undefined) {
+                aggregatedTotals.set(s.schoolId, currentTotal + s.score);
+            }
+
+            const catMap = aggregatedCategoryTotals.get(s.schoolId);
+            if (catMap && catMap.has(s.categoryId)) {
+                catMap.set(s.categoryId, catMap.get(s.categoryId) + s.score);
+            }
+        }
+
+        const ranking = schools.map(school => {
+            const catMap = aggregatedCategoryTotals.get(school.id);
+            const categoryTotals = {};
+            if (catMap) {
+                for (const [catId, total] of catMap.entries()) {
+                    categoryTotals[catId] = total;
+                }
+            }
+
+            return {
+                ...school,
+                total: aggregatedTotals.get(school.id) || 0,
+                categoryTotals
+            };
+        });
 
         // Ordenar por total
         ranking.sort((a, b) => {
