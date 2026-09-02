@@ -623,6 +623,22 @@ class DisplayController {
         }
     }
 
+
+    processNextReveal() {
+        // Encontrar a próxima célula não revelada, da esquerda para direita, de cima para baixo
+        const cells = document.querySelectorAll('.score-cell');
+        let nextCell = null;
+
+        for (let cell of cells) {
+            if (cell.textContent.trim() === '?') {
+                nextCell = cell;
+                break;
+            }
+        }
+
+        return nextCell;
+    }
+
     launchConfetti() {
         const duration = 4000;
         const end = Date.now() + duration;
@@ -687,3 +703,8 @@ class DisplayController {
 document.addEventListener('DOMContentLoaded', () => {
     window.displayController = new DisplayController();
 });
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DisplayController;
+}
