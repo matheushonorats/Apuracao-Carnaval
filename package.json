@@ -1,5 +1,31 @@
 {
   "dependencies": {
     "puppeteer": "^24.37.2"
+  },
+  "name": "app",
+  "version": "1.0.0",
+  "description": "O **SSAMBA** é um sistema completo, moderno e de alta performance projetado para a apuração de desfiles de escolas de samba. Ele foi construído para rodar de forma híbrida: **100% offline** (via `localStorage` e `BroadcastChannel`), com **servidor Node.js local** (para múltiplos dispositivos na mesma rede local) ou **integrado ao Google Sheets/Google Drive** (via Google Apps Script).",
+  "main": "capture_screenshots.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matheushonorats/Apuracao-Carnaval.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/matheushonorats/Apuracao-Carnaval/issues"
+  },
+  "homepage": "https://github.com/matheushonorats/Apuracao-Carnaval#readme",
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1",
+    "jsdom": "^29.1.1",
+    "jsdom-global": "^3.0.2"
   }
 }
