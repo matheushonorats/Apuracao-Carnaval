@@ -856,3 +856,8 @@ class StorageManager {
         return removedCount;
     }
 }
+
+// Export for Node.js/Jest testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StorageManager;
+}
