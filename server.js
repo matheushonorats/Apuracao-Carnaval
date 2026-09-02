@@ -119,28 +119,34 @@ function processImages(data) {
 // In-memory cache
 let cachedData = null;
 
-// Load initial data & Migrate if needed
-if (fs.existsSync(DATA_FILE)) {
-    try {
-        const rawData = fs.readFileSync(DATA_FILE, 'utf8');
+function loadData() {
+    if (fs.existsSync(DATA_FILE)) {
         try {
-            const data = JSON.parse(rawData);
-            // Run migration on startup
-            if (processImages(data)) {
-                cachedData = JSON.stringify(data);
-                fs.writeFileSync(DATA_FILE, cachedData);
-                console.log('✅ MIGRATION: Optimized data.json (Images -> Files)');
-            } else {
+            const rawData = fs.readFileSync(DATA_FILE, 'utf8');
+            try {
+                const data = JSON.parse(rawData);
+                // Run migration on startup
+                if (processImages(data)) {
+                    cachedData = JSON.stringify(data);
+                    fs.writeFileSync(DATA_FILE, cachedData);
+                    console.log('✅ MIGRATION: Optimized data.json (Images -> Files)');
+                } else {
+                    cachedData = rawData;
+                }
+                console.log('✅ Dados carregados com sucesso');
+            } catch (e) {
+                console.error('Error parsing initial data JSON:', e);
                 cachedData = rawData;
             }
         } catch (e) {
-            console.error('Error parsing initial data JSON:', e);
-            cachedData = rawData;
+            console.error('❌ Erro ao ler arquivo de dados:', e);
+            // Não sobrescrever cachedData se houver erro de leitura
         }
-    } catch (e) {
-        console.error('Error loading initial data:', e);
     }
 }
+
+// Load initial data & Migrate if needed
+loadData();
 
 const server = http.createServer((req, res) => {
     // ... (CORS headers skipped in replacement, keeping existing context)
@@ -324,12 +330,21 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen(PORT, () => {
-    const ip = getLocalIP();
-    console.log('---------------------------------------------------');
-    console.log(`✅ SSAMBA Server iniciado!`);
-    console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
-    console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
-    console.log('---------------------------------------------------');
-    // Open admin panel safely (optional, batch file does it)
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        const ip = getLocalIP();
+        console.log('---------------------------------------------------');
+        console.log(`✅ SSAMBA Server iniciado!`);
+        console.log(`🏠 Acesso Local:   http://localhost:${PORT}`);
+        console.log(`📡 Acesso na Rede: http://${ip}:${PORT}`);
+        console.log('---------------------------------------------------');
+        // Open admin panel safely (optional, batch file does it)
+    });
+}
+
+module.exports = {
+    loadData,
+    server,
+    getCachedData: () => cachedData,
+    setCachedData: (data) => { cachedData = data; }
+};
