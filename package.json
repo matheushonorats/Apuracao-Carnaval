@@ -1,5 +1,14 @@
 {
   "dependencies": {
     "puppeteer": "^24.37.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "jsdom": "^22.1.0",
+    "mocha": "^10.2.0",
+    "sinon": "^15.2.0"
+  },
+  "scripts": {
+    "test": "mocha tests/**/*.test.js"
   }
 }
