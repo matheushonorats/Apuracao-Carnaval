@@ -374,9 +374,10 @@ class AdminPanel {
         const schools = this.storage.getSchools();
         console.log(`📊 Escolas encontradas: ${schools.length}`);
 
-        const container = document.getElementById('schoolsList');
+        const tbody = document.querySelector('#schools-list tbody');
+        const container = tbody;
         if (!container) {
-            console.error('❌ RenderSchools: Container #schoolsList não encontrado!');
+            console.error('❌ RenderSchools: Container #schools-list tbody não encontrado!');
             return;
         }
 
@@ -2144,3 +2145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     adminPanel = new AdminPanel();
     window.adminPanel = adminPanel;
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AdminPanel;
+}
