@@ -7,9 +7,11 @@ class AdminPanel {
     constructor() {
         this.storage = new StorageManager();
         this.currentTab = 'schools';
-        this.editingSchoolId = null;
-        this.editingJudgeId = null;
-        this.editingCategoryId = null;
+        this.editingState = {
+            schoolId: null,
+            judgeId: null,
+            categoryId: null
+        };
 
         // Bind event listeners
         this.init();
@@ -204,9 +206,11 @@ class AdminPanel {
         this.currentTab = tabName;
 
         // Resetar os estados dos formulários e IDs de edição ao mudar de aba
-        this.editingSchoolId = null;
-        this.editingJudgeId = null;
-        this.editingCategoryId = null;
+        this.editingState = {
+            schoolId: null,
+            judgeId: null,
+            categoryId: null
+        };
 
         const schoolForm = document.getElementById('schoolForm');
         if (schoolForm) {
@@ -316,7 +320,7 @@ class AdminPanel {
             const schools = this.storage.getSchools();
             const isDuplicate = schools.some(s =>
                 s.name.toLowerCase() === name.toLowerCase() &&
-                s.id !== this.editingSchoolId
+                s.id !== this.editingState.schoolId
             );
 
             if (isDuplicate) {
@@ -340,12 +344,12 @@ class AdminPanel {
             this.setButtonLoading(submitBtn, true);
 
             // Salvar
-            if (this.editingSchoolId) {
+            if (this.editingState.schoolId) {
                 const updates = { name, penalty: penalty ? parseFloat(penalty) : 0 };
                 if (logoDataURL) updates.logoDataURL = logoDataURL;
-                this.storage.updateSchool(this.editingSchoolId, updates);
+                this.storage.updateSchool(this.editingState.schoolId, updates);
                 this.showAlert('✅ Agremiação atualizada com sucesso!', 'success');
-                this.editingSchoolId = null;
+                this.editingState.schoolId = null;
             } else {
                 const newSchool = this.storage.addSchool(name, logoDataURL);
                 if (penalty) {
@@ -358,7 +362,7 @@ class AdminPanel {
             form.reset();
             submitBtn.textContent = 'Adicionar Agremiação';
             submitBtn.classList.remove('btn-success');
-            this.editingSchoolId = null;
+            this.editingState.schoolId = null;
             this.updateFileLabel('schoolLogo', 'Escolher logo...');
 
         } catch (error) {
@@ -431,7 +435,7 @@ class AdminPanel {
         form.schoolName.value = school.name;
         form.schoolPenalty.value = school.penalty || '';
 
-        this.editingSchoolId = id;
+        this.editingState.schoolId = id;
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.textContent = '💾 Atualizar Agremiação';
         submitBtn.classList.add('btn-success');
@@ -488,7 +492,7 @@ class AdminPanel {
             const judges = this.storage.getJudges();
             const isDuplicate = judges.some(j =>
                 j.name.toLowerCase() === name.toLowerCase() &&
-                j.id !== this.editingJudgeId
+                j.id !== this.editingState.judgeId
             );
 
             if (isDuplicate) {
@@ -498,10 +502,10 @@ class AdminPanel {
 
             this.setButtonLoading(submitBtn, true);
 
-            if (this.editingJudgeId) {
-                this.storage.updateJudge(this.editingJudgeId, { name, categoryIds });
+            if (this.editingState.judgeId) {
+                this.storage.updateJudge(this.editingState.judgeId, { name, categoryIds });
                 this.showAlert('✅ Jurado atualizado com sucesso!', 'success');
-                this.editingJudgeId = null;
+                this.editingState.judgeId = null;
             } else {
                 this.storage.addJudge(name, categoryIds);
                 this.showAlert('✅ Jurado adicionado com sucesso!', 'success');
@@ -579,7 +583,7 @@ class AdminPanel {
             cb.checked = judge.categoryIds && judge.categoryIds.includes(cb.value);
         });
 
-        this.editingJudgeId = id;
+        this.editingState.judgeId = id;
         form.querySelector('button[type="submit"]').textContent = 'Atualizar Jurado';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -655,7 +659,7 @@ class AdminPanel {
             const categories = this.storage.getCategories();
             const isDuplicate = categories.some(c =>
                 c.name.toLowerCase() === name.toLowerCase() &&
-                c.id !== this.editingCategoryId
+                c.id !== this.editingState.categoryId
             );
 
             if (isDuplicate) {
@@ -665,10 +669,10 @@ class AdminPanel {
 
             this.setButtonLoading(submitBtn, true);
 
-            if (this.editingCategoryId) {
-                this.storage.updateCategory(this.editingCategoryId, { name, order });
+            if (this.editingState.categoryId) {
+                this.storage.updateCategory(this.editingState.categoryId, { name, order });
                 this.showAlert('✅ Quesito atualizado com sucesso!', 'success');
-                this.editingCategoryId = null;
+                this.editingState.categoryId = null;
             } else {
                 this.storage.addCategory(name, order);
                 this.showAlert('✅ Quesito adicionado com sucesso!', 'success');
@@ -741,7 +745,7 @@ class AdminPanel {
         form.categoryName.value = category.name;
         form.categoryOrder.value = category.order;
 
-        this.editingCategoryId = id;
+        this.editingState.categoryId = id;
         form.querySelector('button[type="submit"]').textContent = 'Atualizar Quesito';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
