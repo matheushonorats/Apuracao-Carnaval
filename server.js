@@ -219,11 +219,27 @@ const server = http.createServer((req, res) => {
     // API: Save Data (UPDATE MEMORY + DISK)
     if (req.url === '/api/data' && req.method === 'POST') {
         const startTime = Date.now();
-        const contentLength = req.headers['content-length'];
+        const contentLength = parseInt(req.headers['content-length'] || '0', 10);
         console.log(`\n📥 [POST] Recebendo dados... Tamanho: ${(contentLength / 1024).toFixed(2)} KB`);
 
+        const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB
+
+        if (contentLength > MAX_PAYLOAD_SIZE) {
+            console.error(`❌ [POST] Rejeitado: Payload muito grande (${(contentLength / 1024 / 1024).toFixed(2)} MB)`);
+            res.writeHead(413, { 'Content-Type': 'text/plain' });
+            res.end('Payload Too Large');
+            return;
+        }
+
         let body = '';
-        req.on('data', chunk => body += chunk);
+        req.on('data', chunk => {
+            body += chunk;
+            if (body.length > MAX_PAYLOAD_SIZE) {
+                console.error(`❌ [POST] Conexão destruída: Payload real excedeu o limite de 50MB`);
+                req.destroy();
+            }
+        });
+
         req.on('end', () => {
             try {
                 // Parse received data
