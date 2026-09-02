@@ -593,8 +593,6 @@ class DisplayController {
         return div.innerHTML;
     }
 
-    // Removido handleUpdate duplicado que sobrescrevia a lógica correta
-
     applySettings(settings) {
         // Atualizar fundo usando método centralizado
         this.updateBackground();
