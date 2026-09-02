@@ -18,6 +18,10 @@ class StorageManager {
         this.isSaving = false;
         this.syncDebounceTimer = null;
 
+        // Cache de performance para evitar repetidos JSON.parse
+        this._cachedDataStr = undefined;
+        this._cachedData = undefined;
+
         // Inicializar dados
         this.init();
     }
@@ -413,8 +417,27 @@ class StorageManager {
      * Obtém todos os dados
      */
     getData() {
-        const data = localStorage.getItem(this.STORAGE_KEY);
-        return data ? JSON.parse(data) : null;
+        try {
+            const dataStr = localStorage.getItem(this.STORAGE_KEY);
+
+            // Se a string não mudou, retorna nossa referência de cache mutável diretamente.
+            // Atenção: Esta otimização assume que a aplicação invoca saveData() adequadamente
+            // se o objeto for mutado e requer que getData() seja muito rápido em loops de leitura.
+            if (this._cachedDataStr !== undefined && this._cachedDataStr === dataStr) {
+                return this._cachedData;
+            }
+
+            const parsed = dataStr ? JSON.parse(dataStr) : null;
+
+            // Atualiza o cache
+            this._cachedDataStr = dataStr;
+            this._cachedData = parsed;
+
+            return parsed;
+        } catch (e) {
+            console.error('Erro ao ler do localStorage:', e);
+            return null;
+        }
     }
 
     /**
