@@ -21,6 +21,20 @@ const mimeTypes = {
     '.ico': 'image/x-icon'
 };
 
+function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>'"]/g, function(tag) {
+        const charsToReplace = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        };
+        return charsToReplace[tag] || tag;
+    });
+}
+
 /**
  * Get local IP address to display to user
  */
@@ -295,8 +309,8 @@ const server = http.createServer((req, res) => {
             if (error.code === 'ENOENT') {
                 // If 404, try serving 404.html or just index.html (SPA-like)? 
                 // For now, simple 404
-                res.writeHead(404);
-                res.end('File not found: ' + filePath);
+                res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end('File not found: ' + escapeHTML(filePath));
             } else {
                 res.writeHead(500);
                 res.end('Server Error: ' + error.code);
