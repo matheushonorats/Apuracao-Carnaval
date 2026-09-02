@@ -35,7 +35,13 @@ class StorageManager {
         } else {
             // 1. Tentar conectar ao servidor local Node.js
             try {
-                const response = await fetch(this.serverUrl);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                const response = await fetch(`${this.serverUrl}?t=${Date.now()}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
                 if (response.ok) {
                     this.isServerAvailable = true;
                     const serverData = await response.json();
@@ -123,7 +129,13 @@ class StorageManager {
             if (this.isSaving) return; // Evitar conflito se estiver salvando
 
             try {
-                const response = await fetch(this.serverUrl);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                const response = await fetch(`${this.serverUrl}?t=${Date.now()}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
                 if (response.ok) {
                     const serverText = await response.text();
 
@@ -181,7 +193,13 @@ class StorageManager {
             if (this.isSaving) return; // Evitar conflito se estiver salvando localmente
             
             try {
-                const response = await fetch(this.serverUrl);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+                const response = await fetch(`${this.serverUrl}?t=${Date.now()}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
                 if (response.ok) {
                     const serverText = await response.text();
 
