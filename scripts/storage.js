@@ -856,3 +856,7 @@ class StorageManager {
         return removedCount;
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StorageManager;
+}
