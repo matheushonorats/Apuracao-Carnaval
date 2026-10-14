@@ -237,8 +237,6 @@ const server = http.createServer((req, res) => {
                 const finalBody = optimized ? JSON.stringify(data) : body;
                 cachedData = finalBody;
 
-                const processTime = Date.now() - startTime;
-                console.log(`🧩 [PROCESS] Otimização: ${optimized ? 'SIM' : 'NÃO'} | Tempo: ${processTime}ms`);
                 console.log(`💾 [SIZE] Final Body: ${(finalBody.length / 1024).toFixed(2)} KB`);
 
                 // Write to disk async
